@@ -44,8 +44,6 @@ Chat is timeline data. People change their minds. For "what's the current take" 
 - Don't average across the whole history when only the latest stretch matters
 - Explicitly say "as of [latest hit date]" — positions evolve
 
-If a channel's history shows a large date gap, treat the eras on either side as distinct contexts, not one continuous arc.
-
 ### 2. People-as-filter
 
 Members are stable pseudo-IDs (currently `builder-NNN`, e.g. `builder-001` — `README.md` documents the scheme). Use this for two patterns:
