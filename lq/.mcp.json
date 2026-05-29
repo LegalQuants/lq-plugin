@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "lqchat-mcp": {
+      "type": "http",
+      "url": "https://lqchat-mcp.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${LQ_MCP_TOKEN}"
+      }
+    }
+  }
+}

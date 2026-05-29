@@ -1,0 +1,11 @@
+{
+  "name": "lq",
+  "version": "0.2.5",
+  "description": "LegalQuants community access for Claude Code. The /lq cold-start interview gives members an 'I know you' greeting derived from their corpus activity (known-active members get no questions; quiet members a brief interview; guests a full cold interview), plus the /lq:assess workflow and a /lq:chat deprecation shim. Members sign in via a Firebase device-code flow on legalquants.com (Google sign-in → 7-day session cookie cached locally); the lqchat-mcp HTTP server verifies the cookie keylessly against Google's public certs (no service-account key). Guests use the shared LQ_MCP_TOKEN bearer. Bundles the read-only sanitized chat corpus (14 channels, ~19k messages, 152 pseudonymized members, 73 extracted attachments) + an auto-loaded model-guidance skill (recency bias, people-as-filter, anti-LQclaw quoting).",
+  "author": {
+    "name": "LegalQuants",
+    "url": "https://www.legalquants.com"
+  },
+  "homepage": "https://github.com/jamietso/lqchat",
+  "license": "MIT"
+}
