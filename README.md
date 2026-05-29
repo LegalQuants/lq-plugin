@@ -1,8 +1,8 @@
 # LegalQuants — Claude Code plugin
 
-AI access to the **LegalQuants community chat archive** from your terminal. Ask natural questions
-across every channel, and — if you're a member — get a personalised experience that knows *your*
-contributions.
+AI access to the **LegalQuants community knowledge** from your terminal — both the raw **chat archive**
+*and* a curated **synthesis vault**. Ask natural questions across everything, and — if you're a member —
+get a personalised experience that knows *your* contributions.
 
 > Members-only. You need a **published LegalQuants profile** (legalquants.com) to sign in.
 
@@ -46,17 +46,22 @@ activity. Then just ask anything about the community.
 ## What you get
 
 - **`/lq`** — cold-start interview + personalised orientation. Active members get an "I know you"
-  greeting (no questions); quieter/guest members get a short interview.
+  greeting (no questions); quieter/guest members get a short interview. Routes your question to the
+  right corpus automatically.
+- **`/lq:ask "<question>"`** — cross-corpus synthesis: fans out to *both* MCPs in parallel and merges
+  into one cited answer. Use for "what's the community's take on X — and where's it from / what's the
+  latest?"
 - **`/lq:assess`** — assessment workflow (for invited candidates).
-- **Chat MCP** (`lqchat-mcp`) — auto-registers; lets the model read the sanitized corpus
-  (read, grep, list, scan_thread, read_attachment, fetch_url).
-- **Auto-loaded guidance** — primes the model on good corpus-querying patterns (recency bias,
-  people-as-filter, never quote the LQclaw bot verbatim).
+- **Two MCP servers** (auto-register; one sign-in covers both):
+  - **`lqchat-mcp`** — primary-source chat (`read`, `grep`, `list`, `scan_thread`, `read_attachment`, `fetch_url`).
+  - **`lqbrain-mcp`** — the synthesis vault (~707 wikilinked notes: insights, debates, projects, tools,
+    people, MOCs) — `read`, `grep`, `list`, `traverse_graph`, `fetch_url`.
+- **Auto-loaded guidance** — primes the model on each corpus's idioms + chat-vs-brain routing.
 
 ## What it does NOT do
 
-- No writes — read-only.
-- No real-time chat (snapshot at last ingest).
+- No writes — both MCPs are read-only.
+- No real-time ingest — chat is a sanitized snapshot; the brain vault is rebuilt periodically by operators.
 - Never exposes another member's identity — `/api/whoami` returns only *your* own.
 
 ---
