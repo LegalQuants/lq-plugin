@@ -6,7 +6,7 @@ cold-start and member sign-in.
 ## Install
 
 ```
-/plugin marketplace add jamietso/lq-plugin
+/plugin marketplace add LegalQuants/lq-plugin
 /plugin install lq@legalquants
 ```
 

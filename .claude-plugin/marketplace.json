@@ -12,7 +12,7 @@
       "description": "LegalQuants community access — chat MCP, /lq cold-start interview ('I know you' greeting for active members), /lq:assess workflow. Members sign in via Firebase device-code flow (Google → 7-day session cookie, verified keylessly); guests use a shared bearer. v0.2.5.",
       "category": "knowledge",
       "source": "./lq",
-      "homepage": "https://github.com/jamietso/lq-plugin"
+      "homepage": "https://github.com/LegalQuants/lq-plugin"
     }
   ]
 }

@@ -13,7 +13,7 @@ contributions.
 In Claude Code:
 
 ```
-/plugin marketplace add jamietso/lq-plugin
+/plugin marketplace add LegalQuants/lq-plugin
 /plugin install lq@legalquants
 ```
 
