@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "lq",
-      "description": "LegalQuants community access — chat MCP, /lq cold-start interview ('I know you' greeting for active members), /lq:assess workflow. Members sign in via Firebase device-code flow (Google → 7-day session cookie, verified keylessly); guests use a shared bearer. v0.2.5.",
+      "description": "LegalQuants community access — TWO read-only MCP servers (lqchat-mcp: primary-source chat ~19k msgs; lqbrain-mcp: ~707-note synthesis vault), /lq cold-start interview ('I know you' for active members) that routes between them, /lq:assess workflow. Members sign in via Firebase device-code (Google → 7-day session cookie, verified keylessly, lqMember-gated); guests use a shared bearer. v0.3.0.",
       "category": "knowledge",
       "source": "./lq",
       "homepage": "https://github.com/LegalQuants/lq-plugin"

@@ -6,6 +6,13 @@
       "headers": {
         "Authorization": "Bearer ${LQ_MCP_TOKEN}"
       }
+    },
+    "lqbrain-mcp": {
+      "type": "http",
+      "url": "https://lqbrain-mcp.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${LQ_MCP_TOKEN}"
+      }
     }
   }
 }
