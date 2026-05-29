@@ -1,13 +1,13 @@
 ---
 name: lqbrain-mcp
-description: Use when lqbrain-mcp tools are available. The vault is LQBrain — the LegalQuants community's curated knowledge graph (~707 wikilinked notes: insights, debates, projects, tools, people, events, MOCs, questions) synthesized from the chat. Read index.md + ask.md first. Brain answers SYNTHESIS/POSITION questions; lqchat-mcp answers ATTRIBUTION/RECENCY questions. Use traverse_graph to follow connections; MOCs are the densest hubs.
+description: Use when lqbrain-mcp tools are available. The vault is LQBrain — the LegalQuants community's curated knowledge graph (wikilinked notes: insights, debates, projects, tools, people, events, MOCs, questions) synthesized from the chat. Read index.md + ask.md first. Brain answers SYNTHESIS/POSITION questions; lqchat-mcp answers ATTRIBUTION/RECENCY questions. Use traverse_graph to follow connections; MOCs are the densest hubs.
 ---
 
 # lqbrain-mcp — knowledge-graph navigation
 
-You have 5 tools over **LQBrain**: the community's *synthesized* second brain — ~707 evergreen notes connected by a `[[wikilink]]` graph. It is the **secondary-source** counterpart to `lqchat-mcp` (the primary-source chat).
+You have these tools over **LQBrain**: the community's *synthesized* second brain — evergreen notes connected by a `[[wikilink]]` graph. It is the **secondary-source** counterpart to `lqchat-mcp` (the primary-source chat).
 
-**On a fresh session, read `index.md` first** (the catalog of all notes by category), then `ask.md` (how to query the vault).
+**On a fresh session, read `index.md` first** (the catalog of all notes by category — the source of truth for what exists, so this guide doesn't go stale), then `ask.md` (how to query the vault).
 
 ## chat-MCP vs brain-MCP — route by question shape
 
