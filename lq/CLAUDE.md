@@ -27,15 +27,15 @@ Difference vs legal-builder-hub's gating pattern:
 
 # lq plugin
 
-LegalQuants community access for Claude Code. v0.2 ships chat MCP + cold-start interview + identity layer + lq-assess workflow. v0.2.5 adds the Firebase device-code sign-in flow (`/lq --signin`) + session-cookie caching + a SessionStart hook. Brain MCP (v0.3) per `plan/lq-plugin/PRD.md`; OAuth/device-code design in `plan/lq-oauth/PRD.md`.
+LegalQuants community access for Claude Code. Ships two read-only MCP servers — lqchat-mcp (primary-source chat) and lqbrain-mcp (synthesis vault, v0.3) — plus the `/lq` cold-start interview, `/lq:ask` cross-MCP synthesis (v0.4), and `/lq:assess`. Members sign in via the Firebase device-code flow (`/lq --signin`) + session-cookie caching + a SessionStart hook (v0.2.5). Design: `plan/lq-plugin/PRD.md`, `plan/lqbrain-mcp/PRD.md`, `plan/lq-oauth/PRD.md`.
 
 ## What this plugin gives the user
 
 - **`/lq`** — cold-start interview (new in v0.2). Single entry point for member discovery. Three modes: known-active members get an "I know you" greeting derived from corpus activity (no questions). Known-quiet members get a brief 2-Q interview. Anonymous (guest) members get a full cold interview. Writes profile to `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`. Flags: `--redo`, `--refresh-activity`, `--signin` (Firebase device-code sign-in), `--signout`.
 - **`/lq:assess`** — assessment workflow for invited candidates (moved from `~/.claude/skills/` in v0.2).
-- **`/lq:chat`** — deprecated shim that redirects to `/lq`. Stays alive through v0.3, removed in v0.4.
-- **Auto-loaded model skill** (`lqchat-mcp`) — primes the model on tool composition and three idioms (recency bias, people-as-filter, anti-LQclaw quoting).
-- **MCP server** — `lqchat-mcp` auto-registers via `.mcp.json`. URL: `https://lqchat-mcp.vercel.app/api/mcp`.
+- **`/lq:ask "<question>"`** — cross-MCP synthesis (v0.4). Orchestrator: fans out to chat + brain explorer subagents in parallel, then merges into one cited answer. Power-user surface; the auto-loaded skills route single-MCP queries without it. (Replaced the removed `/lq:chat` shim.)
+- **Auto-loaded model skills** (`lqchat-mcp`, `lqbrain-mcp`) — prime the model on each corpus's idioms and on chat-vs-brain routing.
+- **MCP servers** — `lqchat-mcp` (`https://lqchat-mcp.vercel.app/api/mcp`) + `lqbrain-mcp` (`https://lqbrain-mcp.vercel.app/api/mcp`) auto-register via `.mcp.json`; one member cookie covers both.
 
 ## User profile (v0.2)
 
@@ -76,23 +76,23 @@ Both pass auth on MCP requests. Only the signed-in member path gets the personal
 
 ## What this plugin does NOT do
 
-- No write operations (read-only MCP)
-- No real-time chat ingest
+- No write operations (both MCPs are read-only)
+- No real-time ingest — the chat is a sanitized snapshot; the brain vault is rebuilt periodically by operators (`/lq:lqbrain-draft`), not live
 - No operator commands (lq:deploy, lq:digest, lq:weekly, lq:issue-token etc. stay in operator's `~/.claude/skills/`, never bundled here)
-- No brain MCP yet — Phase 3 (v0.3)
 
 ## Files
 
 ```
 .claude-plugin/plugin.json     name, version, description, author
-.mcp.json                      lqchat-mcp HTTP server registration (Bearer ${LQ_MCP_TOKEN})
+.mcp.json                      lqchat-mcp + lqbrain-mcp HTTP server registration (Bearer ${LQ_MCP_TOKEN})
 hooks/hooks.json               SessionStart hook registration
 hooks/lq-session-start.mjs     loads cached member cookie → LQ_MCP_TOKEN for the session
 README.md                      member-facing install + usage
 skills/lq/SKILL.md             /lq cold-start interview + device-code sign-in (user-invoked)
-skills/chat/SKILL.md           DEPRECATED — shim redirecting /lq:chat → /lq (removed in v0.4)
-skills/lq-assess/SKILL.md      /lq:assess workflow (moved from personal skills in v0.2)
+skills/ask/SKILL.md            /lq:ask cross-MCP synthesis orchestrator (chat + brain fan-out)
+skills/assess/SKILL.md         /lq:assess workflow (invited candidates)
 skills/lqchat-mcp/SKILL.md     model-guidance (auto-invoked when chat MCP tools present)
+skills/lqbrain-mcp/SKILL.md    model-guidance (auto-invoked when brain MCP tools present)
 ```
 
 ## Privacy boundaries
