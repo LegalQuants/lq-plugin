@@ -1,4 +1,4 @@
-# lq — LegalQuants Claude Code plugin (v0.5.0)
+# lq — LegalQuants Claude Code plugin (v0.5.4)
 
 One-install access to the LegalQuants community chat archive via MCP, with an "I know you"
 cold-start and member sign-in.
@@ -6,9 +6,11 @@ cold-start and member sign-in.
 ## Install
 
 ```
-/plugin marketplace add LegalQuants/lq-plugin
+/plugin marketplace add https://github.com/LegalQuants/lq-plugin.git
 /plugin install lq@legalquants
 ```
+
+> Use the full **HTTPS URL** above. The `owner/repo` shorthand clones over SSH and fails with `Host key verification failed` unless you've set up a GitHub SSH key — HTTPS needs no auth for this public repo.
 
 ## Member sign-in (Firebase device-code — no token to copy)
 

@@ -13,9 +13,11 @@ get a personalised experience that knows *your* contributions.
 In Claude Code:
 
 ```
-/plugin marketplace add LegalQuants/lq-plugin
+/plugin marketplace add https://github.com/LegalQuants/lq-plugin.git
 /plugin install lq@legalquants
 ```
+
+> Use the full **HTTPS URL** above. The `owner/repo` shorthand clones over SSH and fails with `Host key verification failed` unless you've set up a GitHub SSH key — HTTPS needs no auth for this public repo.
 
 ## Sign in (members)
 
