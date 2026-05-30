@@ -3,9 +3,7 @@
     "lq-mcp": {
       "type": "http",
       "url": "https://lq-mcp.vercel.app/api/mcp/mcp",
-      "headers": {
-        "Authorization": "Bearer ${LQ_MCP_TOKEN}"
-      }
+      "headersHelper": "node ${CLAUDE_PLUGIN_ROOT}/hooks/lq-auth-header.mjs"
     }
   }
 }

@@ -11,6 +11,13 @@ the tools' own `description`/schema (which the model receives every session) are
 source of truth for what each tool does and what parameters it takes. **Don't look
 here for tool mechanics; look here for how to use them well.**
 
+## If the corpus isn't reachable
+
+If the `lq-mcp` tools aren't in your toolset, or a call returns an auth error (401 /
+"unauthorized" / an OAuth prompt), the connector isn't set up — **don't answer from your own
+training knowledge.** Tell the user to run **`/lq:start`** to connect (sign in, or set the guest
+`LQ_MCP_TOKEN`), then retry. Keep it to one short message; don't improvise the corpus.
+
 ## One connector, two corpora
 
 `lq-mcp` serves **both** the community's primary-source **chat** archive **and** the

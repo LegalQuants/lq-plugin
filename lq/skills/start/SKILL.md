@@ -25,7 +25,7 @@ Read the user profile at `~/.claude/plugins/config/legalquants/lq/CLAUDE.md` (no
 | File exists, no placeholders, no pause comment | → **Returning user** (lightweight greeting only) |
 | User passed `--redo` flag | → **First run** (overwrite profile after confirmation) |
 | User passed `--refresh-activity` flag | → **Re-derive activity only** (keep identity + manual overrides, re-derive corpus-based fields) |
-| User passed `--signin` flag | → **Force device-code sign-in** (ignore any cached cookie; see "Sign-in path" below), then continue cold-start |
+| User passed `--signin` flag | → **Force device-code sign-in** (ignore any cached cookie; see "Sign-in path" below), then STOP with the fresh-session hand-off — do NOT continue into Mode A/B this session |
 | User passed `--signout` flag | → **Sign out** (delete cached session cookie; see "Sign-out path" below), then stop |
 
 **Migration check**: if no profile at the config path BUT a profile.md or CLAUDE.md exists at the plugin cache path (`~/.claude/plugins/cache/legalquants/lq/<version>/profile.md`), copy it forward to the config path before deciding which branch to take.
@@ -108,7 +108,7 @@ Check whether a shared guest bearer is set: `echo "$LQ_MCP_TOKEN"`.
 
 - **Guest bearer is set** (non-empty AND it is NOT the same value as a previously-cached cookie): the member is on the shared LQ_MCP_TOKEN. Run **Mode C (anonymous)** as before. Add ONE line at the top of the Mode C message:
   > *You're using the shared guest token. To link your member identity (and get the "I know you" greeting), run `/lq --signin` and sign in with your LegalQuants Google account.*
-- **No guest bearer AND no cached cookie**: trigger the **Sign-in path** below inline (don't ask first — there's no other way in). After it completes, return to 3a.
+- **No guest bearer AND no cached cookie**: trigger the **Sign-in path** below inline (don't ask first — there's no other way in). The sign-in caches the cookie and confirms identity via the direct whoami call (S5), then stops with the "start a fresh session" hand-off — it does NOT continue into corpus-derived Mode A/B this session (the MCP only authenticates as the member on the next session). The full "I know you" greeting lands on the next session's returning-user path.
 
 **If the displayed identity looks wrong** (user notices mismatch): they should re-run `/lq --signin` to re-authenticate with the correct Google account, or contact the operator if their Firestore profile is mis-mapped.
 
@@ -186,13 +186,30 @@ Then lock it down:
 chmod 600 ~/.config/lq/token.json
 ```
 
-(Do NOT echo the cookie into chat. Don't print the file contents back. The SessionStart hook handles shell-escaping when it later exports the cookie.)
+(Do NOT echo the cookie into chat. Don't print the file contents back.)
 
-**S5. Surface to the session NOW (so MCP calls in this session use the cookie).** The MCP server reads `$LQ_MCP_TOKEN` at spawn (via `.mcp.json`); the SessionStart hook (`hooks/lq-session-start.mjs`) loads the cached cookie into that variable at the *start* of each session. Since you just signed in mid-session, the already-spawned MCP may still hold the old value. So:
-- For the rest of THIS session, pass the cookie explicitly as the `Authorization: Bearer` header on any direct HTTP call you make (like the `/api/whoami` call in 3b), rather than relying on `$LQ_MCP_TOKEN`.
-- Tell the member: *"Signed in. The new identity takes full effect on your next Claude Code session (the MCP connection picks it up at startup) — for now I'll use it directly."*
+**S5. Confirm identity with ONE direct whoami call — then hand off to a fresh session.** The cached cookie is now on disk; that's all the sign-in session needs to do. The `lq-mcp` connector picks the cookie up **automatically on the next session** (the connector's `headersHelper`, `hooks/lq-auth-header.mjs`, re-reads `~/.config/lq/token.json` and supplies the `Authorization` header on each connection). It does NOT re-read mid-session, so do not run any corpus / MCP tool call here, and do not attempt activity derivation (that needs the authenticated MCP, which only comes up on a fresh session).
 
-**S6. Return to 3a** — re-read the cookie and call `/api/whoami` to resolve identity, then proceed to Step 4 (Mode A/B).
+To greet the member by name right now, make **ONE** direct HTTPS call — a plain `fetch`/`curl`, NOT the MCP:
+
+```
+GET https://lq-mcp.vercel.app/api/whoami
+Authorization: Bearer <access_token just cached>
+```
+
+Use the returned `display_greeting` + `builder` to fill the success block. Then emit **one** crisp success block (no "[PENDING]" apology, nothing pending on the member's side):
+
+```
+✅ Signed in as <display_greeting> (<builder> · <email>).
+
+One quick thing to finish the link: **start a fresh Claude Code session** — quit and reopen,
+or open a new terminal. On that next session the LegalQuants connector reads your cached
+sign-in automatically and connects as you. That's it — one-time, nothing pending on your end.
+
+Next session I'll greet you by name and pull your activity (channels, projects, topics).
+```
+
+**S6. Stop here for `--signin`.** Don't re-run the Step-3 identity branch, don't derive activity, don't loop into a demo — the authenticated activity greeting belongs to the *next* session's returning-user path. (When sign-in was triggered inline from 3c during a first run, you may still record the identity you just resolved from the whoami call into the profile via Step 5, but do NOT make any corpus tool call this session — defer the "I know you" derivation to the next session.)
 
 ### Step 4 — Build the profile (branches by mode)
 
@@ -539,8 +556,8 @@ Use **AskUserQuestion** to pick A or B. Resume = ask only the missing questions;
 Force re-authentication via the device-code flow — used when the cached cookie expired, the member wants to switch Google accounts, or they're upgrading from the shared guest bearer.
 
 1. If a cookie is already cached, ignore it (this is a *forced* re-auth) — but DON'T delete it until the new sign-in succeeds (so a cancelled sign-in leaves the old identity intact).
-2. Run the **Sign-in path (device-code flow)** under Step 3 (S1–S6). On success it overwrites `~/.config/lq/token.json`.
-3. After success, continue into the normal cold-start: re-run the Step-3 identity resolution (3a → 3b), then Step 4 (Mode A/B). If a profile already exists, this effectively re-derives identity; offer `--refresh-activity` if they also want fresh activity stats.
+2. Run the **Sign-in path (device-code flow)** under Step 3 (S1–S6). On success it overwrites `~/.config/lq/token.json`, confirms identity via the ONE direct whoami call (S5), and emits the "start a fresh session" hand-off.
+3. **Stop after the success block — do NOT derive activity this session.** The `lq-mcp` connector only authenticates as the new member on the *next* session (the `headersHelper` re-reads the cookie at each connection, not mid-session). So don't re-run corpus-derived Mode A/B here and don't run any MCP tool call. The "I know you" greeting + activity refresh land automatically on the next session's returning-user path; mention they can run `--refresh-activity` then if they want fresh stats.
 4. On `access_denied` / `expired_token`: surface the message from the S3 table and stop. Leave any existing cookie untouched.
 
 ## Sign-out path (`/lq --signout`)
@@ -552,9 +569,9 @@ Delete the cached session cookie and revert to guest (or unauthenticated).
    rm -f ~/.config/lq/token.json
    ```
 2. Check for a guest bearer: `echo "$LQ_MCP_TOKEN"`.
-   - **Guest bearer still set** → emit: *"Signed out. You're back to the shared guest token (anonymous read access). Run `/lq --signin` any time to re-link your member identity. Takes full effect next session."*
-   - **No guest bearer** → emit: *"Signed out and no shared token is set, so MCP calls won't authenticate until you sign in again. Run `/lq --signin` to sign back in."*
-3. Note the session caveat: the already-spawned MCP connection may still hold the old cookie in `$LQ_MCP_TOKEN` for the rest of this session; the change takes full effect on the next Claude Code session (when the SessionStart hook re-reads the now-absent cookie).
+   - **Guest bearer still set** → emit: *"Signed out. **Start a fresh Claude Code session** to drop the member identity — on the next session the connector reads the (now-absent) cookie and falls back to the shared guest token (anonymous read access). Run `/lq --signin` any time to re-link your member identity."*
+   - **No guest bearer** → emit: *"Signed out. **Start a fresh session** to drop the member identity — after that, MCP calls won't authenticate until you sign in again. Run `/lq --signin` to sign back in."*
+3. The change takes effect when the connector next reconnects on a fresh session: its `headersHelper` re-reads `~/.config/lq/token.json`, finds it gone, and falls back to the guest bearer (or no auth). There's nothing to do mid-session.
 4. Do NOT touch the practice profile at `~/.claude/plugins/config/legalquants/lq/CLAUDE.md` — sign-out only clears the credential, not the personalization. Then stop.
 
 ---
@@ -614,7 +631,11 @@ This skill calls these endpoints. See [plan/lq-oauth/PRD.md](../../../../plan/lq
 
 ## Token injection (how the cached cookie reaches the MCP)
 
-`.mcp.json` registers the MCP with `Authorization: Bearer ${LQ_MCP_TOKEN}`, interpolated **once at server spawn**. To make the cached session cookie that bearer:
+`.mcp.json` registers the `lq-mcp` connector with a **`headersHelper`** — `node ${CLAUDE_PLUGIN_ROOT}/hooks/lq-auth-header.mjs`. Claude Code runs that helper **on each connection** and uses its stdout JSON as the request headers. The helper resolves the bearer fresh every time:
 
-- A **SessionStart hook** (`hooks/hooks.json` → `hooks/lq-session-start.mjs`) runs at the start of each session, reads `~/.config/lq/token.json`, and if a valid (non-expired) cookie is present, appends `export LQ_MCP_TOKEN="<cookie>"` to the file at `$CLAUDE_ENV_FILE`. Claude Code sources that file into the session before spawning the MCP, so the MCP authenticates with the member cookie. If no valid cookie exists, the hook does nothing — the member's existing shared `LQ_MCP_TOKEN` (if any) stays in effect (guest path).
-- **Mid-session caveat:** because injection happens at *session start*, a sign-in performed mid-session (`/lq --signin`) won't change the already-spawned MCP's bearer until the next session. For the rest of the current session the skill uses the cookie directly on its own HTTP calls (Step 3 S5). Full effect lands next session.
+- It reads the cached session cookie at `~/.config/lq/token.json`; if present, non-empty, and not expired, it emits `{"Authorization":"Bearer <cookie>"}` — so the connector authenticates as the signed-in member.
+- Else it falls back to the shared guest bearer `$LQ_MCP_TOKEN` (if set); else it emits `{}` (no auth) and the server 401s.
+
+Because the header is resolved **per connection** (not interpolated once at spawn, and not via any session-start env injection), the cookie a sign-in just cached is picked up the next time the connector connects — which happens on a **fresh session start** (and `/resume`). A sign-in performed mid-session does NOT re-trigger the helper on the already-connected MCP; that's why `/lq --signin` confirms identity with a direct whoami call and then hands off to a fresh session rather than running corpus tools.
+
+**HARD RULE:** never reference a SessionStart hook, `hooks/lq-session-start.mjs`, `$CLAUDE_ENV_FILE`, or "the MCP reads `$LQ_MCP_TOKEN` at spawn" — that mechanism is **deleted**. Auth is now the `headersHelper` (`hooks/lq-auth-header.mjs`) reading the cached cookie on each connection. And never tell a member to `/clear` to pick up a new sign-in — `/clear` does NOT reconnect the connector; only a **fresh session** does.

@@ -25,20 +25,60 @@ primary-source *grounding*. You are the **orchestrator**: fan out over both sour
 
 If the question is clearly one-sided, say so and use a single source instead of fanning out.
 
+## Step 0 — Pre-flight: confirm the corpus is reachable (BEFORE fanning out)
+
+Do NOT spawn the explorers until you've confirmed the `lq-mcp` tools are present **and**
+authenticated — fanning out into an unauthenticated connector just fails twice and wastes the run.
+
+1. **Tools present?** Check your available tools for the `lq-mcp` corpus tools (`read`, `grep`,
+   `list`, …). If they're absent — or the only LegalQuants tool you see is an
+   auth / OAuth / "authenticate" / bootstrap entry — the connector isn't set up → go to **Not connected**.
+2. **Authenticated?** If the tools are present, run ONE cheap probe (e.g. `list` at the root, or a
+   tiny `grep`). If it returns an auth error (401 / "unauthorized" / "not authenticated" / an OAuth
+   prompt) → go to **Not connected**.
+3. Only if the probe returns real corpus data → proceed to Step 1.
+
+### Not connected — fail fast, route to /lq:start
+Do **not** fan out, and do **not** answer from your own training knowledge. Stop and say, plainly:
+
+> I can't reach the LegalQuants corpus — looks like you're not connected yet. Run **`/lq:start`** to
+> sign in (or set your guest `LQ_MCP_TOKEN`), then re-run your `/lq:ask`. I didn't make anything up.
+
+Then end — one short message; don't dump connector internals or OAuth-bootstrap details.
+
 ## Step 1 — Fan out (PARALLEL — both in one message)
 
 Spawn **two `general-purpose` subagents at once** (a single message with two Agent/Task calls, so they
-run concurrently). Each gets the question verbatim plus a corpus-specific brief:
+run concurrently). Each gets the question verbatim plus a corpus-specific brief.
 
-**chat-explorer** (uses the lq-mcp tools with `source:chat` — read / grep / list / scan_thread / read_attachment / fetch_url):
+### HARD RULE — corpus comes ONLY from the lq-mcp tools, NEVER from local disk (applies to BOTH explorers)
+
+The explorers are `general-purpose` subagents with filesystem access, so you MUST bind them tightly:
+the **only** way they may reach the corpus is through the `lq-mcp` tools (`read` / `grep` / `list` / etc.).
+They must **NEVER** read the chat or vault from the local filesystem — not `packages/lqbrain/content`,
+not `sanitized/`, not `raw/`, not any local vault/chat path, not via `Read` / `Grep` / `Glob` / `Bash`
+(`cat`, `find`, …). Those files exist only on operator machines and are **absent for every real member**,
+so reading them yields a **false, machine-dependent answer** that would silently break for anyone else.
+If the `lq-mcp` tools are absent, or any tool returns an auth error (401 / "unauthorized" / "not
+authenticated" / an OAuth prompt), the explorer must return exactly **"unavailable"** and stop — it must
+**NOT** fall back to disk, to its own training knowledge, or to any other source. (Pre-flight in Step 0
+should already have caught this; this rule is the backstop in case a connection drops mid-run.)
+
+**chat-explorer** (uses ONLY the lq-mcp tools with `source:chat` — read / grep / list / scan_thread / read_attachment / fetch_url):
 > Research this question in the LegalQuants **primary-source chat**: «QUESTION».
+> Use ONLY the `lq-mcp` tools — NEVER read the chat from the local filesystem (no `Read`/`Grep`/`Glob`/`Bash`,
+> no `sanitized/` or `raw/` or `packages/` path); those exist only on operator machines and would give a
+> false answer. If the `lq-mcp` tools are missing or return an auth error, reply exactly "unavailable" and stop.
 > Read `README.md` + `GLOSSARY.md` first. Find who said what, when, and the *most recent* take
 > (sort hits by date desc; weight the last few weeks). Return: 3–6 findings, each with a
 > `Channel#Lline` citation + date + pseudo-ID/role; flag the single most recent development; note if
 > the topic evolved. Exclude the LQclaw bot. Be concise — bullet findings, not prose.
 
-**brain-explorer** (uses the lq-mcp tools with `source:brain` — read / grep / list / traverse_graph / fetch_url; `traverse_graph` is brain-only):
+**brain-explorer** (uses ONLY the lq-mcp tools with `source:brain` — read / grep / list / traverse_graph / fetch_url; `traverse_graph` is brain-only):
 > Research this question in the LegalQuants **synthesis vault (LQBrain)**: «QUESTION».
+> Use ONLY the `lq-mcp` tools — NEVER read the vault from the local filesystem (no `Read`/`Grep`/`Glob`/`Bash`,
+> no `packages/lqbrain/content` or any local vault path); those exist only on operator machines and would give
+> a false answer. If the `lq-mcp` tools are missing or return an auth error, reply exactly "unavailable" and stop.
 > Read `index.md` + `ask.md` first. Find the relevant MOC(s), insights, and any `debates/` note;
 > use `traverse_graph` to map how the idea connects. Return: the community's synthesized position
 > (or the tension if it's a debate), 3–6 supporting notes by slug, and whether it's framed as
@@ -58,6 +98,9 @@ Synthesize **one** answer from the two returns:
 4. **Cite both** — brain note slugs (`[[The Orchestration Layer]]`) *and* chat provenance
    (`General#L5421`). Distinguish them: synthesis vs verbatim.
 5. If one explorer found nothing, say so plainly and lean on the other — don't fabricate balance.
+6. If an explorer returns **"unavailable"** (its `lq-mcp` tools were absent or 401'd mid-run), treat that
+   source as missing — say so plainly, don't fill the gap from disk or training knowledge. If BOTH return
+   "unavailable", stop and route the member to `/lq:start` exactly as in **Not connected** — don't answer.
 
 ## Conventions
 

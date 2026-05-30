@@ -27,7 +27,7 @@ Difference vs legal-builder-hub's gating pattern:
 
 # lq plugin
 
-LegalQuants community access for Claude Code. Ships one unified read-only MCP server — `lq-mcp` — that serves BOTH corpora (the primary-source chat archive AND the synthesis vault), plus the `/lq:start` cold-start interview, `/lq:ask` cross-source synthesis, and `/lq:assess`. Members sign in via the Firebase device-code flow (`/lq:start --signin`) + session-cookie caching + a SessionStart hook (v0.2.5). Design: `plan/lq-plugin/PRD.md`, `plan/lq-consolidation/PRD.md`, `plan/lq-oauth/PRD.md`.
+LegalQuants community access for Claude Code. Ships one unified read-only MCP server — `lq-mcp` — that serves BOTH corpora (the primary-source chat archive AND the synthesis vault), plus the `/lq:start` cold-start interview, `/lq:ask` cross-source synthesis, and `/lq:assess`. Members sign in via the Firebase device-code flow (`/lq:start --signin`) + session-cookie caching; the connector authenticates via a `headersHelper` that reads the cached cookie on each connection (v0.2.5). Design: `plan/lq-plugin/PRD.md`, `plan/lq-consolidation/PRD.md`, `plan/lq-oauth/PRD.md`.
 
 ## What this plugin gives the user
 
@@ -49,7 +49,7 @@ The auto-loaded `lq-mcp` skill READS this profile for personalization. Members c
 
 ## Auth (v0.2.5)
 
-Two paths, both authenticate the same MCP via `Authorization: Bearer ${LQ_MCP_TOKEN}`:
+`.mcp.json` declares a **`headersHelper`** — `node ${CLAUDE_PLUGIN_ROOT}/hooks/lq-auth-header.mjs` — that Claude Code runs on **each connection** and whose stdout JSON becomes the request headers. The helper resolves the bearer fresh per connection: cached member cookie first, then the shared guest bearer `$LQ_MCP_TOKEN`, else no auth. Two paths feed it:
 
 ### Member path — Firebase device-code sign-in
 
@@ -59,7 +59,7 @@ Two paths, both authenticate the same MCP via `Authorization: Bearer ${LQ_MCP_TO
   3. Polls `POST https://www.legalquants.com/api/device/token` every ~5s until the website finalizes sign-in.
 - On the website, finalize verifies the Google ID token, requires the member's Firestore profile to be `status === "published"`, sets Firebase **custom claims** (`lqBuilder` from the profile's `builderId`, `lqGreeting` from the first name), and mints a Firebase **session cookie** (7-day expiry) via `createSessionCookie()`.
 - The skill caches that session-cookie string at `~/.config/lq/token.json` (mode 0600) as `{ access_token, expires_at }`.
-- A **SessionStart hook** (`hooks/lq-session-start.mjs`) reads that file at the start of each session and, if the cookie is valid, exports it as `LQ_MCP_TOKEN` so the MCP authenticates as the member.
+- The connector's **`headersHelper`** (`hooks/lq-auth-header.mjs`) reads that file on each connection and, if the cookie is valid (present, non-empty, not expired), supplies `Authorization: Bearer <cookie>` so the MCP authenticates as the member. Because the header is resolved fresh per connection, a freshly cached cookie is picked up the next time the connector connects — on a fresh session start (and `/resume`), NOT mid-session and NOT on `/clear`.
 - `mcp-vercel` verifies the cookie KEYLESSLY (as an RS256 JWT against Google's public session-cookie certs — no service-account key) and `/api/whoami` returns `{ builder: lqBuilder, email, display_greeting: lqGreeting, anonymous: false, authenticated_via: "firebase" }`.
 - A member whose published profile has no `builderId` (after backfill) is authenticated but `lqBuilder: null` → corpus-derive-only, no self-attribution (still "signed in").
 - `/lq:start --signout` deletes `~/.config/lq/token.json` and reverts to the guest path (or unauthenticated if no shared bearer is set).
@@ -84,9 +84,8 @@ Both pass auth on MCP requests. Only the signed-in member path gets the personal
 
 ```
 .claude-plugin/plugin.json     name, version, description, author
-.mcp.json                      lq-mcp HTTP server registration (Bearer ${LQ_MCP_TOKEN})
-hooks/hooks.json               SessionStart hook registration
-hooks/lq-session-start.mjs     loads cached member cookie → LQ_MCP_TOKEN for the session
+.mcp.json                      lq-mcp HTTP server registration (headersHelper → hooks/lq-auth-header.mjs)
+hooks/lq-auth-header.mjs       headersHelper: reads cached cookie (~/.config/lq/token.json) → supplies the Authorization header per connection (guest fallback: $LQ_MCP_TOKEN)
 README.md                      member-facing install + usage
 skills/start/SKILL.md          /lq:start cold-start interview + device-code sign-in (user-invoked)
 skills/lq/SKILL.md             bare /lq alias → runs skills/start/SKILL.md
