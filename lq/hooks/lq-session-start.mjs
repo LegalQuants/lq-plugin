@@ -3,7 +3,7 @@
 //
 // Purpose: if the member has a cached Firebase session cookie at
 // ~/.config/lq/token.json (written by `/lq --signin`), inject it as the
-// LQ_MCP_TOKEN env var for this session so the lqchat-mcp server (which reads
+// LQ_MCP_TOKEN env var for this session so the lq-mcp server (which reads
 // `Authorization: Bearer ${LQ_MCP_TOKEN}` from .mcp.json at spawn) authenticates
 // as the member rather than the shared guest bearer.
 //
@@ -65,7 +65,7 @@ function main() {
     appendFileSync(envFile, `export LQ_MCP_TOKEN="${escapeShellEnvValue(cookie)}"\n`);
     // Surface a one-line, non-sensitive note into model context (stdout becomes
     // additional context for SessionStart hooks). Do NOT print the cookie.
-    process.stdout.write("LegalQuants: signed-in member session cookie loaded for the lqchat MCP. Run /lq for your greeting.\n");
+    process.stdout.write("LegalQuants: signed-in member session cookie loaded for the lq-mcp connector. Run /lq for your greeting.\n");
   } catch {
     // Best-effort: if we can't write the env file, fall through silently to guest.
   }

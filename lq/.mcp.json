@@ -1,15 +1,8 @@
 {
   "mcpServers": {
-    "lqchat-mcp": {
+    "lq-mcp": {
       "type": "http",
-      "url": "https://lqchat-mcp.vercel.app/api/mcp",
-      "headers": {
-        "Authorization": "Bearer ${LQ_MCP_TOKEN}"
-      }
-    },
-    "lqbrain-mcp": {
-      "type": "http",
-      "url": "https://lqbrain-mcp.vercel.app/api/mcp",
+      "url": "https://lq-mcp.vercel.app/api/mcp/mcp",
       "headers": {
         "Authorization": "Bearer ${LQ_MCP_TOKEN}"
       }

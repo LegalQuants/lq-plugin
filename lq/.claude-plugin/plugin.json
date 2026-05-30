@@ -1,7 +1,7 @@
 {
   "name": "lq",
-  "version": "0.4.0",
-  "description": "LegalQuants community access for Claude Code. The /lq cold-start interview gives members an 'I know you' greeting derived from their corpus activity, plus /lq:ask (cross-MCP synthesis) and the /lq:assess workflow. Two read-only HTTP MCP servers auto-register — lqchat-mcp (primary-source sanitized chat: 14 channels, ~19k messages, pseudonymized members, attachments) and lqbrain-mcp (LQBrain synthesis vault: ~707 curated wikilinked notes — insights, debates, projects, tools, people, events, MOCs, questions). The /lq interview routes attribution/recency questions to chat and synthesis/position questions to brain; /lq:ask fans out to BOTH in parallel (chat + brain explorer subagents) and merges into one cited answer. Two auto-loaded model-guidance skills teach each MCP. Members sign in via a Firebase device-code flow on legalquants.com (Google → 7-day session cookie cached locally); both MCPs verify the cookie keylessly against Google's public certs (no service-account key) and require the lqMember claim. Guests use the shared LQ_MCP_TOKEN bearer.",
+  "version": "0.5.0",
+  "description": "LegalQuants community access in Claude Code — search and synthesize the community's collective knowledge (chat archive + curated knowledge vault) through one connector, with /lq:start for a personalized orientation, /lq:ask for cross-source answers, and /lq:assess to take on the community's open questions. Members sign in with their LegalQuants account; guests get read access.",
   "author": {
     "name": "LegalQuants",
     "url": "https://www.legalquants.com"

@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "lq",
-      "description": "LegalQuants community access — TWO read-only MCP servers (lqchat-mcp: primary-source chat ~19k msgs; lqbrain-mcp: ~707-note synthesis vault), /lq cold-start ('I know you'), /lq:ask cross-MCP synthesis, /lq:assess. Firebase device-code sign-in (Google → 7-day cookie, keyless verify, lqMember-gated); guests use a shared bearer. v0.4.0.",
+      "description": "LegalQuants community access in Claude Code — one connector over the community's chat archive + curated knowledge vault, with /lq:start (personalized orientation), /lq:ask (cross-source answers), and /lq:assess. Members sign in with their LegalQuants account; guests get read access. v0.5.0.",
       "category": "knowledge",
       "source": "./lq",
       "homepage": "https://github.com/LegalQuants/lq-plugin"

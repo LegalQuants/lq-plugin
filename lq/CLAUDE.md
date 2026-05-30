@@ -10,9 +10,9 @@ Convention for all skills, commands, and agents in this plugin:
 1. READ user profile from that path (not this file — this is the TEMPLATE).
 2. If the profile is missing OR contains [PLACEHOLDER] markers, the skills should
    PERSONALIZE the experience IF profile data is present, but never BLOCK on absence.
-   Members can use the MCPs without a profile; the profile just enables "I know you"
-   personalization (greeting, self-attribution queries, routing bias).
-3. The /lq cold-start skill WRITES to that path, creating parent directories as needed.
+   Members can use the MCP without a profile; the profile just enables "I know you"
+   personalization (greeting, self-attribution queries, source-weighting bias).
+3. The /lq:start cold-start skill WRITES to that path, creating parent directories as needed.
 4. On first run after a plugin update, if a populated profile exists at the old cache path
    (~/.claude/plugins/cache/legalquants/lq/<version>/CLAUDE.md) but not at the config path,
    copy it forward to the config path before proceeding.
@@ -21,31 +21,31 @@ Convention for all skills, commands, and agents in this plugin:
 
 Difference vs legal-builder-hub's gating pattern:
 - legal-builder-hub: skills REFUSE to do work without profile (recommendations are profile-driven)
-- lq plugin: skills WORK FINE without profile (MCPs are auth-gated by token, not profile);
+- lq plugin: skills WORK FINE without profile (the MCP is auth-gated by token, not profile);
   profile just enables personalization
 -->
 
 # lq plugin
 
-LegalQuants community access for Claude Code. Ships two read-only MCP servers — lqchat-mcp (primary-source chat) and lqbrain-mcp (synthesis vault, v0.3) — plus the `/lq` cold-start interview, `/lq:ask` cross-MCP synthesis (v0.4), and `/lq:assess`. Members sign in via the Firebase device-code flow (`/lq --signin`) + session-cookie caching + a SessionStart hook (v0.2.5). Design: `plan/lq-plugin/PRD.md`, `plan/lqbrain-mcp/PRD.md`, `plan/lq-oauth/PRD.md`.
+LegalQuants community access for Claude Code. Ships one unified read-only MCP server — `lq-mcp` — that serves BOTH corpora (the primary-source chat archive AND the synthesis vault), plus the `/lq:start` cold-start interview, `/lq:ask` cross-source synthesis, and `/lq:assess`. Members sign in via the Firebase device-code flow (`/lq:start --signin`) + session-cookie caching + a SessionStart hook (v0.2.5). Design: `plan/lq-plugin/PRD.md`, `plan/lq-consolidation/PRD.md`, `plan/lq-oauth/PRD.md`.
 
 ## What this plugin gives the user
 
-- **`/lq`** — cold-start interview (new in v0.2). Single entry point for member discovery. Three modes: known-active members get an "I know you" greeting derived from corpus activity (no questions). Known-quiet members get a brief 2-Q interview. Anonymous (guest) members get a full cold interview. Writes profile to `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`. Flags: `--redo`, `--refresh-activity`, `--signin` (Firebase device-code sign-in), `--signout`.
+- **`/lq:start`** — cold-start interview (bare `/lq` is a kept alias that runs the same thing). Single entry point for member discovery. Three modes: known-active members get an "I know you" greeting derived from corpus activity (no questions). Known-quiet members get a brief 2-Q interview. Anonymous (guest) members get a full cold interview. Writes profile to `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`. Flags: `--redo`, `--refresh-activity`, `--signin` (Firebase device-code sign-in), `--signout`.
 - **`/lq:assess`** — assessment workflow for invited candidates (moved from `~/.claude/skills/` in v0.2).
-- **`/lq:ask "<question>"`** — cross-MCP synthesis (v0.4). Orchestrator: fans out to chat + brain explorer subagents in parallel, then merges into one cited answer. Power-user surface; the auto-loaded skills route single-MCP queries without it. (Replaced the removed `/lq:chat` shim.)
-- **Auto-loaded model skills** (`lqchat-mcp`, `lqbrain-mcp`) — prime the model on each corpus's idioms and on chat-vs-brain routing.
-- **MCP servers** — `lqchat-mcp` (`https://lqchat-mcp.vercel.app/api/mcp`) + `lqbrain-mcp` (`https://lqbrain-mcp.vercel.app/api/mcp`) auto-register via `.mcp.json`; one member cookie covers both.
+- **`/lq:ask "<question>"`** — cross-source synthesis. Orchestrator: fans out to chat + brain explorer subagents in parallel, then merges into one cited answer. Power-user surface; the auto-loaded skill handles routine queries without it. (Replaced the removed `/lq:chat` shim.)
+- **Auto-loaded guidance skill** (`lq-mcp`) — primes the model on each corpus's idioms and on how results span both sources (labelled by source; you don't pick a corpus up front).
+- **MCP server** — `lq-mcp` (`https://lq-mcp.vercel.app/api/mcp/mcp`) auto-registers via `.mcp.json`; one member cookie covers it. The tools take `source: chat | brain | all` (default all), so a plain query spans both corpora and results are labelled by source.
 
 ## User profile (v0.2)
 
-Each member has a local profile at `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`. Created on first `/lq` run, contains:
+Each member has a local profile at `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`. Created on first `/lq:start` run, contains:
 
 - **Identity** — builder-NNN, email, display name (from `/api/whoami` server lookup)
 - **Activity** (derived from corpus for active members) — message counts per channel, joined date, top topics, shipped projects
 - **Inferred preferences** — recency-vs-synthesis focus, channels of interest
 
-Auto-loaded skills (this `lqchat-mcp`, future `lqbrain-mcp`) READ this profile for personalization. Members can edit any field manually; fields marked `[manual]` are preserved across `/lq --refresh-activity`.
+The auto-loaded `lq-mcp` skill READS this profile for personalization. Members can edit any field manually; fields marked `[manual]` are preserved across `/lq:start --refresh-activity`.
 
 ## Auth (v0.2.5)
 
@@ -53,7 +53,7 @@ Two paths, both authenticate the same MCP via `Authorization: Bearer ${LQ_MCP_TO
 
 ### Member path — Firebase device-code sign-in
 
-- The member runs `/lq --signin` (or sign-in triggers automatically on first `/lq` when no cached cookie and no shared bearer). The skill:
+- The member runs `/lq:start --signin` (or sign-in triggers automatically on first `/lq:start` when no cached cookie and no shared bearer). The skill:
   1. `POST https://www.legalquants.com/api/device/code` → gets a `user_code` + `verification_uri`.
   2. Tells the member to visit `https://www.legalquants.com/device`, enter the code, and sign in with the Google account on their LegalQuants profile.
   3. Polls `POST https://www.legalquants.com/api/device/token` every ~5s until the website finalizes sign-in.
@@ -62,7 +62,7 @@ Two paths, both authenticate the same MCP via `Authorization: Bearer ${LQ_MCP_TO
 - A **SessionStart hook** (`hooks/lq-session-start.mjs`) reads that file at the start of each session and, if the cookie is valid, exports it as `LQ_MCP_TOKEN` so the MCP authenticates as the member.
 - `mcp-vercel` verifies the cookie KEYLESSLY (as an RS256 JWT against Google's public session-cookie certs — no service-account key) and `/api/whoami` returns `{ builder: lqBuilder, email, display_greeting: lqGreeting, anonymous: false, authenticated_via: "firebase" }`.
 - A member whose published profile has no `builderId` (after backfill) is authenticated but `lqBuilder: null` → corpus-derive-only, no self-attribution (still "signed in").
-- `/lq --signout` deletes `~/.config/lq/token.json` and reverts to the guest path (or unauthenticated if no shared bearer is set).
+- `/lq:start --signout` deletes `~/.config/lq/token.json` and reverts to the guest path (or unauthenticated if no shared bearer is set).
 
 ### Guest path — shared bearer (unchanged)
 
@@ -76,7 +76,7 @@ Both pass auth on MCP requests. Only the signed-in member path gets the personal
 
 ## What this plugin does NOT do
 
-- No write operations (both MCPs are read-only)
+- No write operations (the MCP is read-only)
 - No real-time ingest — the chat is a sanitized snapshot; the brain vault is rebuilt periodically by operators (`/lq:lqbrain-draft`), not live
 - No operator commands (lq:deploy, lq:digest, lq:weekly, lq:issue-token etc. stay in operator's `~/.claude/skills/`, never bundled here)
 
@@ -84,15 +84,15 @@ Both pass auth on MCP requests. Only the signed-in member path gets the personal
 
 ```
 .claude-plugin/plugin.json     name, version, description, author
-.mcp.json                      lqchat-mcp + lqbrain-mcp HTTP server registration (Bearer ${LQ_MCP_TOKEN})
+.mcp.json                      lq-mcp HTTP server registration (Bearer ${LQ_MCP_TOKEN})
 hooks/hooks.json               SessionStart hook registration
 hooks/lq-session-start.mjs     loads cached member cookie → LQ_MCP_TOKEN for the session
 README.md                      member-facing install + usage
-skills/lq/SKILL.md             /lq cold-start interview + device-code sign-in (user-invoked)
-skills/ask/SKILL.md            /lq:ask cross-MCP synthesis orchestrator (chat + brain fan-out)
+skills/start/SKILL.md          /lq:start cold-start interview + device-code sign-in (user-invoked)
+skills/lq/SKILL.md             bare /lq alias → runs skills/start/SKILL.md
+skills/ask/SKILL.md            /lq:ask cross-source synthesis orchestrator (chat + brain fan-out)
 skills/assess/SKILL.md         /lq:assess workflow (invited candidates)
-skills/lqchat-mcp/SKILL.md     model-guidance (auto-invoked when chat MCP tools present)
-skills/lqbrain-mcp/SKILL.md    model-guidance (auto-invoked when brain MCP tools present)
+skills/lq-mcp/SKILL.md         model-guidance (auto-invoked when lq-mcp tools present)
 ```
 
 ## Privacy boundaries

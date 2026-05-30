@@ -33,7 +33,7 @@ This starts a Google sign-in via a one-time device code:
 **Restart your Claude Code session** so it picks up the sign-in, then:
 
 ```
-/lq
+/lq:start
 ```
 
 If your profile is published and linked, you'll get an "I know you" greeting derived from your chat
@@ -45,22 +45,21 @@ activity. Then just ask anything about the community.
 
 ## What you get
 
-- **`/lq`** — cold-start interview + personalised orientation. Active members get an "I know you"
-  greeting (no questions); quieter/guest members get a short interview. Routes your question to the
-  right corpus automatically.
-- **`/lq:ask "<question>"`** — cross-corpus synthesis: fans out to *both* MCPs in parallel and merges
+- **`/lq:start`** (bare `/lq` is a kept alias) — cold-start interview + personalised orientation. Active
+  members get an "I know you" greeting (no questions); quieter/guest members get a short interview. A plain
+  question spans both corpora automatically — results are labelled by source.
+- **`/lq:ask "<question>"`** — cross-source synthesis: fans out over *both* sources in parallel and merges
   into one cited answer. Use for "what's the community's take on X — and where's it from / what's the
   latest?"
 - **`/lq:assess`** — assessment workflow (for invited candidates).
-- **Two MCP servers** (auto-register; one sign-in covers both):
-  - **`lqchat-mcp`** — primary-source chat (`read`, `grep`, `list`, `scan_thread`, `read_attachment`, `fetch_url`).
-  - **`lqbrain-mcp`** — the synthesis vault (~707 wikilinked notes: insights, debates, projects, tools,
-    people, MOCs) — `read`, `grep`, `list`, `traverse_graph`, `fetch_url`.
-- **Auto-loaded guidance** — primes the model on each corpus's idioms + chat-vs-brain routing.
+- **One connector** (`lq-mcp`) over the community chat archive + curated synthesis vault — read-only; one
+  sign-in covers it. Tools take `source: chat | brain | all` (default `all`), so you don't pick a corpus up
+  front; a plain query spans both and results are labelled by source.
+- **Auto-loaded guidance** — one skill priming the model on the corpus's idioms.
 
 ## What it does NOT do
 
-- No writes — both MCPs are read-only.
+- No writes — `lq-mcp` is read-only.
 - No real-time ingest — chat is a sanitized snapshot; the brain vault is rebuilt periodically by operators.
 - Never exposes another member's identity — `/api/whoami` returns only *your* own.
 
@@ -69,7 +68,7 @@ activity. Then just ask anything about the community.
 ## How sign-in works (under the hood)
 
 `Google login → your LegalQuants profile → a private builder ID → a 7-day Firebase session cookie`.
-The cookie carries your identity as Firebase custom claims; the MCP verifies it **keylessly** (against
+The cookie carries your identity as Firebase custom claims; the lq-mcp server verifies it **keylessly** (against
 Google's public certs — no service-account key) and returns only your own builder ID + first-name
 greeting. Your builder ID is never shown to other members.
 
