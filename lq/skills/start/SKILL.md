@@ -188,7 +188,7 @@ chmod 600 ~/.config/lq/token.json
 
 (Do NOT echo the cookie into chat. Don't print the file contents back.)
 
-**S5. Confirm identity with ONE direct whoami call — then hand off to a fresh session.** The cached cookie is now on disk; that's all the sign-in session needs to do. The `lq-mcp` connector picks the cookie up **automatically on the next session** (the connector's `headersHelper`, `hooks/lq-auth-header.mjs`, re-reads `~/.config/lq/token.json` and supplies the `Authorization` header on each connection). It does NOT re-read mid-session, so do not run any corpus / MCP tool call here, and do not attempt activity derivation (that needs the authenticated MCP, which only comes up on a fresh session).
+**S5. Confirm identity with ONE direct whoami call — then hand off to a fresh session.** The cached cookie is now on disk; that's all the sign-in session needs to do. The `lq-mcp` connector picks the cookie up **automatically on the next session** (the connector's `headersHelper`, `hooks/lq-auth-header.sh`, re-reads `~/.config/lq/token.json` and supplies the `Authorization` header on each connection). It does NOT re-read mid-session, so do not run any corpus / MCP tool call here, and do not attempt activity derivation (that needs the authenticated MCP, which only comes up on a fresh session).
 
 To greet the member by name right now, make **ONE** direct HTTPS call — a plain `fetch`/`curl`, NOT the MCP:
 
@@ -631,11 +631,11 @@ This skill calls these endpoints. See [plan/lq-oauth/PRD.md](../../../../plan/lq
 
 ## Token injection (how the cached cookie reaches the MCP)
 
-`.mcp.json` registers the `lq-mcp` connector with a **`headersHelper`** — `node ${CLAUDE_PLUGIN_ROOT}/hooks/lq-auth-header.mjs`. Claude Code runs that helper **on each connection** and uses its stdout JSON as the request headers. The helper resolves the bearer fresh every time:
+`.mcp.json` registers the `lq-mcp` connector with a **`headersHelper`** — `/bin/sh ${CLAUDE_PLUGIN_ROOT}/hooks/lq-auth-header.sh` (pure POSIX sh, invoked via `/bin/sh` — NOT `node`, because Claude Code spawns the helper with no `PATH` and an unqualified `node` would be "command not found" → empty output → no auth → OAuth-404). Claude Code runs that helper **on each connection** and uses its stdout JSON as the request headers. The helper resolves the bearer fresh every time:
 
 - It reads the cached session cookie at `~/.config/lq/token.json`; if present, non-empty, and not expired, it emits `{"Authorization":"Bearer <cookie>"}` — so the connector authenticates as the signed-in member.
 - Else it falls back to the shared guest bearer `$LQ_MCP_TOKEN` (if set); else it emits `{}` (no auth) and the server 401s.
 
 Because the header is resolved **per connection** (not interpolated once at spawn, and not via any session-start env injection), the cookie a sign-in just cached is picked up the next time the connector connects — which happens on a **fresh session start** (and `/resume`). A sign-in performed mid-session does NOT re-trigger the helper on the already-connected MCP; that's why `/lq --signin` confirms identity with a direct whoami call and then hands off to a fresh session rather than running corpus tools.
 
-**HARD RULE:** never reference a SessionStart hook, `hooks/lq-session-start.mjs`, `$CLAUDE_ENV_FILE`, or "the MCP reads `$LQ_MCP_TOKEN` at spawn" — that mechanism is **deleted**. Auth is now the `headersHelper` (`hooks/lq-auth-header.mjs`) reading the cached cookie on each connection. And never tell a member to `/clear` to pick up a new sign-in — `/clear` does NOT reconnect the connector; only a **fresh session** does.
+**HARD RULE:** never reference a SessionStart hook, `hooks/lq-session-start.mjs`, `$CLAUDE_ENV_FILE`, or "the MCP reads `$LQ_MCP_TOKEN` at spawn" — that mechanism is **deleted**. Auth is now the `headersHelper` (`/bin/sh hooks/lq-auth-header.sh`, pure POSIX sh — never invoke it via `node`; CC's helper spawn has no PATH) reading the cached cookie on each connection. And never tell a member to `/clear` to pick up a new sign-in — `/clear` does NOT reconnect the connector; only a **fresh session** does.
