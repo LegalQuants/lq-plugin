@@ -50,4 +50,4 @@ builder ID + first-name greeting — never another member's identity.
 - Sign-in rejected → publish your legalquants.com profile, then `/lq:start --signin` again.
 - MCP 401 after sign-in → restart the session (loads the cached cookie), or re-sign-in if the 7-day session expired.
 
-*Questions: jamietso@gmail.com*
+*Questions: j.tso@legalquants.com*
