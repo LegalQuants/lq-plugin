@@ -1,6 +1,6 @@
 {
   "name": "lq",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "LegalQuants community access in Claude Code — search and synthesize the community's collective knowledge (chat archive + curated knowledge vault) through one connector, with /lq:start for a personalized orientation, /lq:ask for cross-source answers, and /lq:assess to take on the community's open questions. Members sign in with their LegalQuants account; guests get read access.",
   "author": {
     "name": "LegalQuants",

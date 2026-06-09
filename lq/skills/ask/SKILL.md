@@ -31,18 +31,26 @@ Do NOT spawn the explorers until you've confirmed the `lq-mcp` tools are present
 authenticated — fanning out into an unauthenticated connector just fails twice and wastes the run.
 
 1. **Tools present?** Check your available tools for the `lq-mcp` corpus tools (`read`, `grep`,
-   `list`, …). If they're absent — or the only LegalQuants tool you see is an
-   auth / OAuth / "authenticate" / bootstrap entry — the connector isn't set up → go to **Not connected**.
+   `list`, …). If you see a native **Authenticate** action for the connector (an
+   auth / OAuth / "authenticate" entry) but no corpus tools yet, the connector **is** wired —
+   the member just hasn't signed in. Don't treat that as "Not connected": instead, instruct the
+   user to **run the connector's Authenticate (native OAuth sign-in)**, then re-run `/lq:ask`.
+   Only treat the connector as truly absent — and go to **Not connected** — when **no** LegalQuants
+   tool is present at all (neither corpus tools nor an Authenticate / auth entry).
 2. **Authenticated?** If the tools are present, run ONE cheap probe (e.g. `list` at the root, or a
    tiny `grep`). If it returns an auth error (401 / "unauthorized" / "not authenticated" / an OAuth
-   prompt) → go to **Not connected**.
+   prompt), prefer the connector's **Authenticate (native OAuth sign-in)** first; if that isn't
+   available, fall back to `/lq:start --signin` (which also tries native OAuth first, then device-code). If neither path is
+   available → go to **Not connected**.
 3. Only if the probe returns real corpus data → proceed to Step 1.
 
 ### Not connected — fail fast, route to /lq:start
 Do **not** fan out, and do **not** answer from your own training knowledge. Stop and say, plainly:
 
-> I can't reach the LegalQuants corpus — looks like you're not connected yet. Run **`/lq:start`** to
-> sign in (or set your guest `LQ_MCP_TOKEN`), then re-run your `/lq:ask`. I didn't make anything up.
+> I can't reach the LegalQuants corpus — looks like you're not connected yet. If Claude offers an
+> **Authenticate** action for lq-mcp, run it (native OAuth). Otherwise run **`/lq:start`** (legacy
+> device-code sign-in), or set your guest `LQ_MCP_TOKEN` for guest access. Then re-run your `/lq:ask`.
+> I didn't make anything up.
 
 Then end — one short message; don't dump connector internals or OAuth-bootstrap details.
 
@@ -100,7 +108,8 @@ Synthesize **one** answer from the two returns:
 5. If one explorer found nothing, say so plainly and lean on the other — don't fabricate balance.
 6. If an explorer returns **"unavailable"** (its `lq-mcp` tools were absent or 401'd mid-run), treat that
    source as missing — say so plainly, don't fill the gap from disk or training knowledge. If BOTH return
-   "unavailable", stop and route the member to `/lq:start` exactly as in **Not connected** — don't answer.
+   "unavailable", stop and route the member exactly as in **Not connected** (Authenticate first, then
+   `/lq:start` / guest token) — don't answer.
 
 ## Conventions
 

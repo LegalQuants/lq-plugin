@@ -25,7 +25,7 @@ Read the user profile at `~/.claude/plugins/config/legalquants/lq/CLAUDE.md` (no
 | File exists, no placeholders, no pause comment | → **Returning user** (lightweight greeting only) |
 | User passed `--redo` flag | → **First run** (overwrite profile after confirmation) |
 | User passed `--refresh-activity` flag | → **Re-derive activity only** (keep identity + manual overrides, re-derive corpus-based fields) |
-| User passed `--signin` flag | → **Force device-code sign-in** (ignore any cached cookie; see "Sign-in path" below), then STOP with the fresh-session hand-off — do NOT continue into Mode A/B this session |
+| User passed `--signin` flag | → **Re-authenticate**: tries the connector's Authenticate (native OAuth) first; device-code fallback if unavailable/declined (ignore any cached cookie; see "Sign-in path" below), then STOP with the fresh-session hand-off — do NOT continue into Mode A/B this session |
 | User passed `--signout` flag | → **Sign out** (delete cached session cookie; see "Sign-out path" below), then stop |
 
 **Migration check**: if no profile at the config path BUT a profile.md or CLAUDE.md exists at the plugin cache path (`~/.claude/plugins/cache/legalquants/lq/<version>/profile.md`), copy it forward to the config path before deciding which branch to take.
@@ -36,16 +36,16 @@ On first run, identity + activity together determine which onboarding flow runs.
 
 | Mode | Detection | Onboarding flow |
 |---|---|---|
-| **Known active** | `/api/whoami` resolves to a builder (member OAuth path) AND a chat-source grep returns ≥ 10 messages from that pseudo-ID | **Derive everything from corpus**. Display "I know you" greeting. NO interview questions. ~5 tool calls, ~10 sec |
-| **Known quiet** | `/api/whoami` resolves to a builder (member OAuth path) BUT a chat-source grep returns < 10 messages | **Brief 2-question interview** (topics of interest + recency-vs-synthesis preference) — supplements the thin corpus signal |
+| **Known active** | `/api/whoami` resolves to a builder (authenticated member path — native OAuth or cached cookie) AND a chat-source grep returns ≥ 10 messages from that pseudo-ID | **Derive everything from corpus**. Display "I know you" greeting. NO interview questions. ~5 tool calls, ~10 sec |
+| **Known quiet** | `/api/whoami` resolves to a builder (authenticated member path — native OAuth or cached cookie) BUT a chat-source grep returns < 10 messages | **Brief 2-question interview** (topics of interest + recency-vs-synthesis preference) — supplements the thin corpus signal |
 | **Anonymous** | `/api/whoami` returns `anonymous: true` (guest bearer path), OR endpoint unreachable | **Full cold interview** (role + practice area + focus + channels) — we have no corpus signal to derive from |
 
 The threshold (N=10 messages) is configurable; tune via the constant `MIN_MESSAGES_FOR_DERIVATION` if the cold-start needs adjustment.
 
 **Path detection** (two auth paths, both live):
 - **Guest path:** a valid shared bearer → `/api/whoami` returns `anonymous: true` → Mode C (the full cold interview).
-- **Member path:** member sign-in via the **Firebase device-code flow** (Google sign-in on the website → a Firebase **session cookie**, 7-day expiry, cached at `~/.config/lq/token.json`). Step 3 below reads that cookie first; if missing/expired and the member isn't on the shared guest bearer, it triggers sign-in. After sign-in, `/api/whoami` resolves the member's builder (from the Firebase custom claim) → Mode A/B. A member whose published profile has no `builderId` is authenticated but corpus-derive-only ("member without builder").
-- The cached token is a Firebase session-cookie string, NOT a custom JWT. mcp-vercel verifies it server-side via `verifySessionCookie`. The skill never decodes or trusts it locally — identity always comes from `/api/whoami`.
+- **Member path (primary = native OAuth):** the member signs in via the connector's **Authenticate** (native OAuth) — host-driven; Claude Code holds the access token and attaches it to every request, so **nothing is cached locally** on this path. Step 3 resolves identity by calling the **`whoami` MCP tool** through the connector (the server returns the builder/greeting it resolved from that token). The **Firebase device-code flow** (Google sign-in on the website) remains a fallback when native Authenticate is unavailable/declined; it caches a session cookie at `~/.config/lq/token.json` that Step 3 reads directly. Either path → Mode A/B; a member whose published profile has no `builderId` is authenticated but corpus-derive-only ("member without builder").
+- The cached token is a Firebase session-cookie string, NOT a custom JWT. The lq-mcp server verifies it server-side via `verifySessionCookie`. The skill never decodes or trusts it locally — identity always comes from `/api/whoami`.
 - See [plan/lq-oauth/PRD.md](../../../../plan/lq-oauth/PRD.md) for the full OAuth design.
 
 ---
@@ -74,7 +74,7 @@ Emit one short paragraph as your own text:
 
 > **One thing to know before you ask:** there's one `lq-mcp` connector, and it spans both corpora. The **chat archive** is the primary source (verbatim messages, dated, attributable). The **synthesis vault** is the synthesis layer (curated atomic notes, evergreen positions). A plain question spans both — you don't pick a corpus first. Results come back labelled by source, so you can see whether something is a dated message or a settled position. Just ask your question.
 
-### Step 3 — Identity (device-code sign-in + cached cookie)
+### Step 3 — Identity (Authenticate / native OAuth → cached cookie; device-code fallback)
 
 Identity now flows from a Firebase **session cookie** cached at `~/.config/lq/token.json`. Resolve it in this order — do NOT skip steps:
 
@@ -102,13 +102,14 @@ Authorization: Bearer <access_token from token.json>
 | HTTP 401 | Cached cookie is expired or revoked server-side (`verifySessionCookie` threw). Delete the stale file (`rm -f ~/.config/lq/token.json`) and fall through to 3c (trigger sign-in) |
 | HTTP 5xx / unreachable | Emit: *"Identity service unreachable — I'll continue anonymously for now. You can re-run `/lq --redo` later to retry."* Record `builder_id: anonymous`, `pending_identity_check: true`; proceed to Mode C |
 
-**3c. No valid cookie → branch on guest bearer.**
+**3c. No valid cookie → ask the connector who you are (this catches native OAuth), then branch.**
 
-Check whether a shared guest bearer is set: `echo "$LQ_MCP_TOKEN"`.
+Call the **`whoami` MCP tool** (the lq-mcp connector tool — NOT the direct curl in 3b). It returns the identity the server resolved for whatever credential the connector is currently using: a **native-OAuth** access token (which writes no `token.json`), the helper's cached cookie, or the guest bearer. Branch on the result:
 
-- **Guest bearer is set** (non-empty AND it is NOT the same value as a previously-cached cookie): the member is on the shared LQ_MCP_TOKEN. Run **Mode C (anonymous)** as before. Add ONE line at the top of the Mode C message:
-  > *You're using the shared guest token. To link your member identity (and get the "I know you" greeting), run `/lq --signin` and sign in with your LegalQuants Google account.*
-- **No guest bearer AND no cached cookie**: trigger the **Sign-in path** below inline (don't ask first — there's no other way in). The sign-in caches the cookie and confirms identity via the direct whoami call (S5), then stops with the "start a fresh session" hand-off — it does NOT continue into corpus-derived Mode A/B this session (the MCP only authenticates as the member on the next session). The full "I know you" greeting lands on the next session's returning-user path.
+- `{ anonymous: false, builder, email, display_greeting, authenticated_via: "oauth" | "firebase" }` → you're a **signed-in member**. Emit *"You're **<greeting>** (<builder> · <email>). Writing this to your local profile."*, record all three fields, and proceed to **Mode A/B** detection. (`builder: null` → "member without builder": corpus-derive-only, no self-attribution.) A member already connected via native OAuth is resolved HERE — they are never bounced to sign-in.
+- `{ anonymous: true }` → the shared guest bearer. Run **Mode C (anonymous)** and add ONE line at the top of the Mode C message:
+  > *You're using the shared guest token. To link your member identity (and get the "I know you" greeting), run `/lq --signout` (or unset `LQ_MCP_TOKEN`) first, then use the connector's Authenticate (native OAuth sign-in) and sign in with your LegalQuants Google account.*
+- **`whoami` tool unavailable or errors** (the connector isn't connected — no credential at all — or it's an older server without the tool): you're not authenticated yet → go to the **Sign-in path** below (native Authenticate primary; device-code fallback), then STOP with the "start a fresh session" hand-off — do NOT continue into corpus-derived Mode A/B this session. The "I know you" greeting lands on the next session's returning-user path.
 
 **If the displayed identity looks wrong** (user notices mismatch): they should re-run `/lq --signin` to re-authenticate with the correct Google account, or contact the operator if their Firestore profile is mis-mapped.
 
@@ -116,9 +117,11 @@ Check whether a shared guest bearer is set: `echo "$LQ_MCP_TOKEN"`.
 
 ---
 
-#### Sign-in path (device-code flow)
+#### Sign-in path — native OAuth primary, device-code fallback
 
 Triggered by `/lq --signin`, OR inline from 3c when there's no cookie and no guest bearer. **Never run a free-text query here** — this is identity only.
+
+**Preamble — native sign-in is the primary path, and it's host-driven.** If Claude Code offers a native **Authenticate** action for the connector, that's the primary path: tell the member to complete it (browser → Google → consent), then **start a fresh session and re-run `/lq:start`**. Native OAuth writes no `token.json` — on the next session the connector attaches the OAuth token and Step 3c resolves identity via the **`whoami` MCP tool**. Do NOT run the device-code steps S1–S6 for the native path. Fall back to S1–S6 below only if native Authenticate is unavailable or the member declines it.
 
 **S1. Request a device code.**
 
@@ -137,7 +140,7 @@ Response (200):
 ```
 On `400 invalid_client` or `429` (rate-limited): emit the error and stop — tell the member to retry in a minute.
 
-**S2. Show the member the code + URL.** Use `verification_uri` and `user_code` from the response verbatim (don't hardcode — the server is source of truth for the URL):
+**S2. Show the member the code + URL.** Native sign-in isn't available here, so use this one-time code instead. Use `verification_uri` and `user_code` from the response verbatim (don't hardcode — the server is source of truth for the URL):
 
 ```
 To sign in to LegalQuants:
@@ -297,9 +300,11 @@ Your shared guest token authenticates against the MCP — so you have full read
 access to the full community chat archive. But it isn't linked to a 
 specific community member, so I can't personalize.
 
-→ To link your member identity: run `/lq --signin` and sign in with the Google 
-  account on your LegalQuants profile. You'll get the "I know you" greeting on 
-  your next /lq run (activity, projects, topics — all derived from your 
+→ To link your member identity: run `/lq --signout` (or unset LQ_MCP_TOKEN) 
+  first, then use the connector's Authenticate (native OAuth sign-in) and sign in 
+  with the Google account on your LegalQuants profile (device-code sign-in is the 
+  fallback if native Authenticate is unavailable). You'll get the "I know you" 
+  greeting on your next /lq run (activity, projects, topics — all derived from your 
   contributions). Your profile must be published first.
 
 For now, a quick interview to personalize the experience anonymously.
@@ -483,7 +488,7 @@ Skip this step if no signal available.
 
 Emit one line:
 
-> *Ask your question naturally — results come back labelled by source, chat (raw) and vault (synthesis). To refresh your activity profile: `/lq --refresh-activity`. To redo from scratch: `/lq --redo`. To sign in / switch accounts: `/lq --signin`. To sign out: `/lq --signout`. To edit directly: open `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`.*
+> *Ask your question naturally — results come back labelled by source, chat (raw) and vault (synthesis). To refresh your activity profile: `/lq --refresh-activity`. To redo from scratch: `/lq --redo`. To sign in / switch accounts: `/lq --signin` (uses the connector's Authenticate; device-code fallback). To sign out: `/lq --signout`. To edit directly: open `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`.*
 
 Then stop. No picker, no demo, no further prompts.
 
@@ -553,10 +558,10 @@ Use **AskUserQuestion** to pick A or B. Resume = ask only the missing questions;
 
 ## Sign-in path (`/lq --signin`)
 
-Force re-authentication via the device-code flow — used when the cached cookie expired, the member wants to switch Google accounts, or they're upgrading from the shared guest bearer.
+Force re-authentication — native OAuth primary, device-code fallback — used when the cached cookie expired, the member wants to switch Google accounts, or they're upgrading from the shared guest bearer.
 
 1. If a cookie is already cached, ignore it (this is a *forced* re-auth) — but DON'T delete it until the new sign-in succeeds (so a cancelled sign-in leaves the old identity intact).
-2. Run the **Sign-in path (device-code flow)** under Step 3 (S1–S6). On success it overwrites `~/.config/lq/token.json`, confirms identity via the ONE direct whoami call (S5), and emits the "start a fresh session" hand-off.
+2. Run the **Sign-in path** under Step 3: native Authenticate (host-driven) first; only if it's unavailable or declined, fall back to the device-code flow (S1–S6). **Native OAuth:** the member completes Authenticate, then re-runs `/lq:start` on a fresh session — identity then resolves via the `whoami` MCP tool (no `token.json`). **Device-code:** it overwrites `~/.config/lq/token.json` and confirms via the direct whoami call (S5). Either way, emit the "start a fresh session" hand-off.
 3. **Stop after the success block — do NOT derive activity this session.** The `lq-mcp` connector only authenticates as the new member on the *next* session (the `headersHelper` re-reads the cookie at each connection, not mid-session). So don't re-run corpus-derived Mode A/B here and don't run any MCP tool call. The "I know you" greeting + activity refresh land automatically on the next session's returning-user path; mention they can run `--refresh-activity` then if they want fresh stats.
 4. On `access_denied` / `expired_token`: surface the message from the S3 table and stop. Leave any existing cookie untouched.
 
@@ -569,7 +574,7 @@ Delete the cached session cookie and revert to guest (or unauthenticated).
    rm -f ~/.config/lq/token.json
    ```
 2. Check for a guest bearer: `echo "$LQ_MCP_TOKEN"`.
-   - **Guest bearer still set** → emit: *"Signed out. **Start a fresh Claude Code session** to drop the member identity — on the next session the connector reads the (now-absent) cookie and falls back to the shared guest token (anonymous read access). Run `/lq --signin` any time to re-link your member identity."*
+   - **Guest bearer still set** → emit: *"Signed out. **Start a fresh Claude Code session** to drop the member identity — on the next session the connector reads the (now-absent) cookie and falls back to the shared guest token (anonymous read access). Run `/lq --signin` any time to re-link your member identity (re-link uses the connector's Authenticate / native OAuth; device-code fallback)."*
    - **No guest bearer** → emit: *"Signed out. **Start a fresh session** to drop the member identity — after that, MCP calls won't authenticate until you sign in again. Run `/lq --signin` to sign back in."*
 3. The change takes effect when the connector next reconnects on a fresh session: its `headersHelper` re-reads `~/.config/lq/token.json`, finds it gone, and falls back to the guest bearer (or no auth). There's nothing to do mid-session.
 4. Do NOT touch the practice profile at `~/.claude/plugins/config/legalquants/lq/CLAUDE.md` — sign-out only clears the credential, not the personalization. Then stop.
@@ -624,7 +629,7 @@ The auto-loaded `lq-mcp/` guidance skill stays — different audience (model), d
 
 This skill calls these endpoints. See [plan/lq-oauth/PRD.md](../../../../plan/lq-oauth/PRD.md) for the full contracts:
 
-- `GET https://lq-mcp.vercel.app/api/whoami` (mcp-vercel) — verifies the cached session cookie via `verifySessionCookie` and returns `{ builder, email, display_greeting, anonymous, authenticated_via }`.
+- `GET https://lq-mcp.vercel.app/api/whoami` — verifies the cached session cookie via `verifySessionCookie` and returns `{ builder, email, display_greeting, anonymous, authenticated_via }`.
 - `POST https://www.legalquants.com/api/device/code` (website) — issues `{ device_code, user_code, verification_uri, expires_in, interval }`.
 - `POST https://www.legalquants.com/api/device/token` (website) — CLI polls; returns the Firebase session cookie once the member completes sign-in at `/device`.
 - Device-code issuance + Google sign-in + `setCustomUserClaims` + `createSessionCookie` happen on the website (`legalquant`), which already has the Firebase Admin SDK and member profiles. No `token_registry.json` / `roster.json` at runtime — identity is carried in the cookie's custom claims (`lqBuilder`, `lqGreeting`, set from the profile's `builderId` during backfill).
