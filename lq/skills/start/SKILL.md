@@ -36,11 +36,13 @@ On first run, identity + activity together determine which onboarding flow runs.
 
 | Mode | Detection | Onboarding flow |
 |---|---|---|
-| **Known active** | `/api/whoami` resolves to a builder (authenticated member path — native OAuth or cached cookie) AND a chat-source grep returns ≥ 10 messages from that pseudo-ID | **Derive everything from corpus**. Display "I know you" greeting. NO interview questions. ~5 tool calls, ~10 sec |
-| **Known quiet** | `/api/whoami` resolves to a builder (authenticated member path — native OAuth or cached cookie) BUT a chat-source grep returns < 10 messages | **Brief 2-question interview** (topics of interest + recency-vs-synthesis preference) — supplements the thin corpus signal |
+| **Known active** | `/api/whoami` resolves to a builder (authenticated member path — native OAuth or cached cookie) AND `grep(author: "builder-NNN", source: "chat", limit: 400)` returns ≥ 10 posts | **Derive everything from corpus**. Display "I know you" greeting. NO interview questions. ~5 tool calls, ~10 sec |
+| **Known quiet** | `/api/whoami` resolves to a builder (authenticated member path — native OAuth or cached cookie) BUT `grep(author: "builder-NNN", source: "chat", limit: 400)` returns < 10 posts | **Brief 2-question interview** (topics of interest + recency-vs-synthesis preference) — supplements the thin corpus signal |
 | **Anonymous** | `/api/whoami` returns `anonymous: true` (guest bearer path), OR endpoint unreachable | **Full cold interview** (role + practice area + focus + channels) — we have no corpus signal to derive from |
 
 The threshold (N=10 messages) is configurable; tune via the constant `MIN_MESSAGES_FOR_DERIVATION` if the cold-start needs adjustment.
+
+> **Count a member's posts with the `author` filter, never a body grep.** `grep(author: "builder-NNN", source: "chat", limit: 400)` matches the parsed message author. Grepping the prefix `\\] builder-NNN: ` as text returns **0** — the author lives in the line prefix, not the message body — which would mis-file every active member as "Known quiet" and suppress the "I know you" greeting. Always pass `limit: 400` (the cap), never the default `limit: 50` — the skill counts the returned results, so a default-capped call would undercount any member with 50+ posts (e.g. report 50 for a 60-post member).
 
 **Path detection** (two auth paths, both live):
 - **Guest path:** a valid shared bearer → `/api/whoami` returns `anonymous: true` → Mode C (the full cold interview).
@@ -224,7 +226,7 @@ Based on the mode detected in cold-start check:
 
 Run these tool calls **in parallel** (single response with multiple tool calls):
 
-1. **Activity per channel** — `grep("\\] builder-NNN: ", source: "chat", regex: true)` substituting the actual pseudo-ID. Count hits per channel. Sort desc.
+1. **Activity per channel** — `grep(author: "builder-NNN", source: "chat", limit: 400)` substituting the actual pseudo-ID (omit `query` — the `author` filter alone returns every post by that member, matched on the parsed author field). Count hits per channel from the results; sort desc. NEVER grep the author *prefix* `\\] builder-NNN: ` — the tool searches message bodies, not the author field, so a prefix search always returns 0.
 2. **Member profile** — `read("members/builder-NNN.md")` — get the role descriptor, joined date, bio.
 3. **Top topics** — sample the member's messages (use the grep output from #1, take a representative slice of ~30 messages). For each, extract content keywords. Cluster manually into top 3-5 topics.
 4. **Shipped projects** — already in member file (`## Ships` section). Extract project names + one-line descriptions.
@@ -477,7 +479,7 @@ Your activity profile was last derived <X days ago>. To refresh: /lq --refresh-a
 ### Step 2 — What's new (corpus delta since their last visit)
 
 If `last_derived_at` is in profile, compute delta:
-- Quick `grep("\\] builder-NNN: ", source: "chat", regex: true)` to get current message count
+- Quick `grep(author: "builder-NNN", source: "chat", limit: 400)` to get current message count (the `author` filter counts the member's own posts; do NOT grep the `\\] builder-NNN: ` prefix — it returns 0)
 - Compare to profile's `total_messages` field
 - If new messages: *"Since you last ran /lq: you've posted +<X> messages (mostly in <channel>)."*
 - If corpus stats are in your context from a recent healthcheck: also surface corpus-wide changes ("LQ AI channel grew by ~270 since you last visited")
@@ -509,7 +511,7 @@ Copy current profile to `.bak` via Bash.
 ### Step 2 — Re-run derivation
 
 Same tool calls as first-run Mode A (parallel):
-1. Activity per channel
+1. Activity per channel — `grep(author: "builder-NNN", source: "chat", limit: 400)` (author filter, not a prefix grep)
 2. Member profile
 3. Top topics
 4. Shipped projects
