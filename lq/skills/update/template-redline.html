@@ -1,0 +1,102 @@
+<!doctype html>
+<!--
+  LegalQuants Living Profile — REDLINE renderer (flavor 2 / the "update" shot).
+  Shows what changed on a member's profile since the last run: per-field
+  before/after with the chat evidence that justifies each change.
+
+  Replace __REDLINE_JSON__ with a redline object:
+  { subject:{memberNumber,displayName}, window:{from,to}, baseline:"...",
+    summary:"...", changes:[ { path, op, zone:'spine'|'voice',
+      before, after, evidence:{quote,channel,date,url} } ] }
+  Only SPINE changes require evidence; voice changes are authored.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LegalQuants · Profile Redline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{--bg:#faf7f2;--ink:#1a1a1a;--muted:#6b7280;--border:#e8e4dc;--oxblood:#7a1f1f;
+    --emerald:#1f7a3f;--paper:#fffdf9;--add:rgba(31,122,63,.1);--del:rgba(122,31,31,.07);
+    --display:'Fraunces',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:56px 28px 96px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+  h1{font-family:var(--display);font-weight:500;font-size:2.5rem;letter-spacing:-.02em;margin:.4rem 0 .2rem}
+  .sub{color:#444;max-width:60ch}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;margin:1.1rem 0 0;padding-top:1rem;border-top:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+  .meta b{color:var(--ink);font-weight:500}
+  .summary{margin:1.6rem 0 2.4rem;font-family:var(--display);font-size:1.2rem;line-height:1.4;color:#2a2a2a;border-left:2px solid var(--oxblood);padding-left:1.1rem}
+  .change{border:1px solid var(--border);border-radius:14px;background:var(--paper);padding:1.2rem 1.3rem;margin:1rem 0}
+  .chead{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.9rem}
+  .path{font-family:var(--mono);font-size:.82rem;color:var(--ink)}
+  .op{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;padding:.16rem .5rem;border-radius:999px}
+  .op.append{background:var(--add);color:var(--emerald)} .op.set,.op.replace{background:rgba(122,31,31,.1);color:var(--oxblood)}
+  .zone{margin-left:auto;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .zone.spine{color:var(--oxblood)}
+  .diff{display:grid;gap:.5rem}
+  .row{padding:.55rem .8rem;border-radius:8px;font-size:.96rem;line-height:1.5}
+  .row.before{background:var(--del);color:#7a1f1f;text-decoration:line-through;text-decoration-color:rgba(122,31,31,.45)}
+  .row.after{background:var(--add);color:#14532d}
+  .row .tag{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;opacity:.7;display:block;margin-bottom:.15rem;text-decoration:none}
+  .ev{margin-top:.9rem;border-top:1px dashed var(--border);padding-top:.7rem}
+  .ev .q{font-family:var(--display);font-style:italic;font-size:1.02rem;color:#333}
+  .ev .src{margin-top:.35rem;font-family:var(--mono);font-size:.68rem;color:var(--oxblood)}
+  .ev a{color:var(--oxblood)}
+  .noev{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:.6rem}
+  .foot{margin-top:3rem;padding-top:1.2rem;border-top:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--muted);line-height:1.7}
+  .rv{opacity:0;transform:translateY(8px)}.js .rv{animation:rise .5s ease forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.js .rv{animation:none;opacity:1;transform:none}}
+  @media print{
+    .rv{opacity:1!important;transform:none!important;animation:none!important}
+    html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .change,.summary{break-inside:avoid}
+    .wrap{padding:24px 22px 40px}
+  }
+</style>
+</head>
+<body><div class="wrap" id="root"></div>
+<script>
+const R = __REDLINE_JSON__;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const has=v=>v!=null&&!(Array.isArray(v)&&!v.length)&&!(typeof v==='string'&&!v.trim());
+// URL scheme allowlist — evidence URLs are chat-derived; reject javascript:/data:/etc in href.
+const safeUrl=u=>{try{const p=new URL(u);return(p.protocol==='http:'||p.protocol==='https:'||p.protocol==='mailto:')?u:'#';}catch{return '#';}};
+const fmt=v=>{ if(v==null) return '<em style="opacity:.6">(empty)</em>'; if(typeof v==='object') return esc(JSON.stringify(v)); return esc(v); };
+const s=R.subject||{};
+let html=`<div class="rv"><div class="eyebrow">Living Profile · Redline</div>
+  <h1>${esc(s.displayName||s.memberNumber||'')}</h1>
+  <p class="sub eyebrow" style="text-transform:none;letter-spacing:.02em;font-size:.8rem">${esc(s.memberNumber||'')}</p>
+  <div class="meta">
+    <span>Window <b>${esc((R.window&&R.window.from)||'')} → ${esc((R.window&&R.window.to)||'')}</b></span>
+    ${has(R.baseline)?`<span>Baseline <b>${esc(R.baseline)}</b></span>`:''}
+    <span><b>${(R.changes||[]).length}</b> proposed change${(R.changes||[]).length===1?'':'s'}</span>
+  </div></div>`;
+if(has(R.summary)) html+=`<div class="summary rv">${esc(R.summary)}</div>`;
+html += (R.changes||[]).map(c=>{
+  const ev=c.evidence||{};
+  const evHtml = (has(ev.quote)||has(ev.url)||has(ev.channel))
+    ? `<div class="ev">${has(ev.quote)?`<div class="q">“${esc(ev.quote)}”</div>`:''}
+        <div class="src">${[ev.channel,ev.date].filter(has).map(esc).join(' · ')}${has(ev.url)?` · <a href="${esc(safeUrl(ev.url))}" target="_blank" rel="noopener">source</a>`:''}</div></div>`
+    : (c.zone==='voice' ? `<div class="noev">authored (voice field — no citation required)</div>`
+                        : `<div class="noev" style="color:#7a1f1f">⚠ spine change with no evidence — would be DROPPED at the gate</div>`);
+  return `<div class="change rv">
+    <div class="chead"><span class="path">${esc(c.path)}</span>
+      <span class="op ${esc(c.op||'set')}">${esc(c.op||'set')}</span>
+      <span class="zone ${esc(c.zone||'')}">${esc((c.zone||'').toUpperCase())}</span></div>
+    <div class="diff">
+      ${has(c.before)?`<div class="row before"><span class="tag">before</span>${fmt(c.before)}</div>`:''}
+      <div class="row after"><span class="tag">after</span>${fmt(c.after)}</div>
+    </div>${evHtml}
+  </div>`;
+}).join('');
+html+=`<footer class="foot rv">Redline drafted from ${esc(s.memberNumber||'the member')}'s LegalQuants chat activity by Claude + LQ MCP. Every earned change cites a primary-source message; the member approves each line before anything publishes.</footer>`;
+document.getElementById('root').innerHTML=html;
+document.documentElement.classList.add('js');
+[...document.querySelectorAll('.rv')].forEach((b,i)=>b.style.animationDelay=(Math.min(i,12)*60)+'ms');
+document.title=(s.displayName||s.memberNumber||'Redline')+' · Redline · LegalQuants';
+</script></body></html>

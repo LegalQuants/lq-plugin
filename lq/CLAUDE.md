@@ -34,6 +34,7 @@ LegalQuants community access for Claude Code. Ships one unified read-only MCP se
 - **`/lq:start`** — cold-start interview (bare `/lq` is a kept alias that runs the same thing). Single entry point for member discovery. Three modes: known-active members get an "I know you" greeting derived from corpus activity (no questions). Known-quiet members get a brief 2-Q interview. Anonymous (guest) members get a full cold interview. Writes profile to `~/.claude/plugins/config/legalquants/lq/CLAUDE.md`. Flags: `--redo`, `--refresh-activity`, `--signin` (legacy device-code fallback sign-in; the primary sign-in is the connector's Authenticate native OAuth prompt), `--signout`.
 - **`/lq:assess`** — assessment workflow for invited candidates (moved from `~/.claude/skills/` in v0.2).
 - **`/lq:ask "<question>"`** — cross-source synthesis. Orchestrator: fans out to chat + brain explorer subagents in parallel, then merges into one cited answer. Power-user surface; the auto-loaded skill handles routine queries without it. (Replaced the removed `/lq:chat` shim.)
+- **`/lq:update`** — Living Profile generator. Reads everything a member shipped + said (`whoami` → `members/builder-NNN.md` → author-grep of their chat) and drafts a magazine-style profile in the real beta-profile schema (authored voice vs cited spine), rendering it to a **local** HTML page. Modes: from-scratch (default), `--redline` (cited delta vs a prior draft), `--member <builder-NNN>` (operator). Read-only + draft-only: it cannot publish through the MCP — the website-submission path is out of scope.
 - **Auto-loaded guidance skill** (`lq-mcp`) — primes the model on each corpus's idioms and on how results span both sources (labelled by source; you don't pick a corpus up front).
 - **MCP server** — `lq-mcp` (`https://lq-mcp.vercel.app/api/mcp/mcp`) auto-registers via `.mcp.json`; one member cookie covers it. The tools take `source: chat | brain | all` (default all), so a plain query spans both corpora and results are labelled by source.
 
@@ -47,7 +48,7 @@ Each member has a local profile at `~/.claude/plugins/config/legalquants/lq/CLAU
 
 The auto-loaded `lq-mcp` skill READS this profile for personalization. Members can edit any field manually; fields marked `[manual]` are preserved across `/lq:start --refresh-activity`.
 
-## Auth (v0.5.5)
+## Auth (v0.6.0)
 
 There are three ways auth reaches the MCP, in order of precedence: the connector's native OAuth access token (primary), the cached Firebase session cookie from the legacy device-code fallback, and the shared guest bearer. The `headersHelper` covers the latter two; native OAuth is handled by the connector itself.
 
@@ -86,7 +87,7 @@ All three pass auth on MCP requests. Only the signed-in member paths get the per
 
 ## What this plugin does NOT do
 
-- No write operations (the MCP is read-only)
+- No write operations to the corpus (the MCP is read-only). `/lq:update` writes only a Living Profile *draft* to a local file on the member's own machine — like `/lq:start`'s profile — and never publishes through the MCP.
 - No real-time ingest — the chat is a sanitized snapshot; the brain vault is rebuilt periodically by operators (`/lq:lqbrain-draft`), not live
 - No operator commands (lq:deploy, lq:digest, lq:weekly, lq:issue-token etc. stay in operator's `~/.claude/skills/`, never bundled here)
 
@@ -101,6 +102,9 @@ skills/start/SKILL.md          /lq:start cold-start interview + device-code sign
 skills/lq/SKILL.md             bare /lq alias → runs skills/start/SKILL.md
 skills/ask/SKILL.md            /lq:ask cross-source synthesis orchestrator (chat + brain fan-out)
 skills/assess/SKILL.md         /lq:assess workflow (invited candidates)
+skills/update/SKILL.md         /lq:update Living Profile generator (scratch / --redline / --member); renders via template{,-redline}.html to a local page
+skills/update/template.html    profile renderer (real beta-profile design); template-redline.html = the delta view
+skills/update/reference/beta-profile-schema.md   the BetaProfile schema the skill fills (voice vs cited spine)
 skills/lq-mcp/SKILL.md         model-guidance (auto-invoked when lq-mcp tools present)
 ```
 

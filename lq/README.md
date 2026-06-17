@@ -1,4 +1,4 @@
-# lq — LegalQuants Claude Code plugin (v0.5.5)
+# lq — LegalQuants Claude Code plugin (v0.6.0)
 
 One-install access to the LegalQuants community chat archive via MCP, with an "I know you"
 cold-start and member sign-in.
@@ -40,12 +40,13 @@ account on your **published** LegalQuants profile. A 7-day session is cached at 
 - **`/lq:start`** — cold-start interview + personalised orientation ("I know you" for active members). Bare `/lq` is a kept alias that runs the same thing.
 - **`/lq:ask`** — cross-source synthesis across both corpora.
 - **`/lq:assess`** — assessment workflow for invited candidates.
+- **`/lq:update`** — drafts your **Living Profile** from your own community footprint (everything you shipped + said) and renders it to a local page. Modes: from-scratch (default), `--redline` (a cited delta), `--member <builder-NNN>` (operator). Read-only + draft-only — nothing publishes.
 - **`lq-mcp`** — one read-only connector over the community chat archive + synthesis vault (auto-registers via `.mcp.json`).
 - Auto-loaded model guidance (recency bias, people-as-filter, anti-LQclaw-quoting).
 
 ## Not included
 
-- No writes (read-only) · no real-time ingest · no operator commands.
+- No writes to the corpus (read-only) · no real-time ingest · no operator commands. (`/lq:update` writes only a profile draft to a local file on your machine — like `/lq:start`'s profile — never to the corpus.)
 
 ## Auth (how it works)
 

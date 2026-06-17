@@ -1,0 +1,322 @@
+<!doctype html>
+<!--
+  LegalQuants Living Profile — standalone renderer.
+  Pure presentation over a BetaProfile JSON doc (the real legalquant
+  types/beta-profile.ts model). No build step, no framework, offline-safe.
+
+  Usage: replace the literal token  __PROFILE_JSON__  with a BetaProfile
+  object (see plan/lq-living-profiles-demo/profiles/*.json for the shape).
+  The /lq:update skill and the demo build.mjs both splice into this one file
+  so the render is identical everywhere.
+
+  VOICE fields (authored, no citation): lede, deck, stance, texture, sidebars, coda, metaBand.
+  SPINE fields (earned, every entry shows a Channel#Lline citation): sections,
+  pullquotes, projects, expertise, positions, voice.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LegalQuants · Living Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#faf7f2; --ink:#1a1a1a; --muted:#6b7280; --border:#e8e4dc;
+    --oxblood:#7a1f1f; --emerald:#1f7a3f; --paper:#fffdf9;
+    --display:'Fraunces',Georgia,serif; --sans:'DM Sans',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:17px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:56px 28px 96px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;
+    letter-spacing:.14em;color:var(--muted)}
+  .display{font-family:var(--display);letter-spacing:-.02em;font-optical-sizing:auto}
+  .cite{display:inline-flex;align-items:center;gap:.4em;margin-top:.5rem;
+    font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;
+    color:var(--oxblood);background:rgba(122,31,31,.06);
+    border:1px solid rgba(122,31,31,.16);border-radius:999px;padding:.18rem .55rem;
+    text-decoration:none}
+  .cite::before{content:"▣";font-size:.7em}
+  .cite + .cite{margin-left:.35rem}
+  section{margin-top:3.2rem}
+  .label{margin-bottom:1rem}
+
+  /* ---- masthead ---- */
+  .dateline{display:flex;justify-content:space-between;align-items:baseline;
+    padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+  .masthead{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:start;
+    margin-top:1.6rem}
+  .name{font-family:var(--display);font-weight:500;font-size:3.1rem;line-height:1.02;
+    letter-spacing:-.03em;margin:0}
+  .name .sur{font-style:italic;font-weight:400}
+  .deck{font-family:var(--display);font-size:1.32rem;line-height:1.3;color:#3a3a3a;
+    margin:.9rem 0 0;max-width:34ch}
+  .portrait{width:128px;height:128px;border-radius:18px;border:1px solid var(--border);
+    background:var(--paper);display:flex;align-items:center;justify-content:center;
+    overflow:hidden}
+  .portrait img{width:100%;height:100%;object-fit:cover}
+  .monogram{font-family:var(--display);font-size:2.6rem;color:var(--oxblood);font-weight:500}
+  figcaption{margin-top:.45rem;font-family:var(--mono);font-size:.64rem;color:var(--muted);
+    text-align:center;letter-spacing:.03em}
+  .metaband{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:.2rem 1.4rem;margin-top:1.8rem;padding-top:1.2rem;border-top:1px solid var(--border)}
+  .metaband dt{font-family:var(--mono);font-size:.64rem;text-transform:uppercase;
+    letter-spacing:.12em;color:var(--muted);margin-bottom:.1rem}
+  .metaband dd{margin:0 0 .7rem;font-size:.95rem}
+  .metaband a{color:var(--oxblood);text-decoration:none;border-bottom:1px solid rgba(122,31,31,.25)}
+
+  /* ---- lede ---- */
+  .lede{font-size:1.12rem;line-height:1.66;max-width:64ch}
+  .lede p{margin:0 0 1rem}
+  .lede p:first-of-type::first-letter{font-family:var(--display);color:var(--oxblood);
+    font-size:3.4rem;line-height:.8;float:left;padding:.06em .12em .02em 0;font-weight:500}
+
+  /* ---- sections ---- */
+  .sec h3{font-family:var(--display);font-weight:500;font-size:1.7rem;letter-spacing:-.02em;
+    margin:0 0 .7rem}
+  .sec .num{font-family:var(--mono);font-size:.8rem;color:var(--oxblood);margin-right:.6em}
+  .sec p{margin:0 0 .85rem;max-width:64ch}
+
+  /* ---- pullquote ---- */
+  .pull{border-left:2px solid var(--oxblood);padding-left:1.2rem;margin:2.4rem 0}
+  .pull q{font-family:var(--display);font-style:italic;font-size:1.7rem;line-height:1.32;
+    quotes:none}
+  .pull q::before,.pull q::after{content:""}
+  .pull .src{display:block;margin-top:.5rem;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+
+  /* ---- projects ---- */
+  ol.ships{list-style:none;margin:0;padding:0}
+  ol.ships li{display:grid;grid-template-columns:auto 1fr auto;gap:.4rem 1rem;
+    padding:1.05rem 0;border-top:1px solid var(--border);align-items:baseline}
+  ol.ships li:last-child{border-bottom:1px solid var(--border)}
+  ol.ships .pnum{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+  ol.ships .pname{font-family:var(--display);font-size:1.18rem;font-weight:500}
+  ol.ships .psub{font-family:var(--mono);font-size:.66rem;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.08em;margin-left:.6em}
+  ol.ships .pdesc{grid-column:2;color:#333;font-size:.96rem;margin-top:.15rem}
+  ol.ships .pdesc .cite{margin-top:.45rem}
+  .chip{font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;
+    padding:.2rem .55rem;border-radius:999px;white-space:nowrap}
+  .chip.Built{background:#efece6;color:#555}
+  .chip.Shipped{background:rgba(31,122,63,.1);color:var(--emerald)}
+  .chip.Live{background:rgba(122,31,31,.1);color:var(--oxblood)}
+
+  /* ---- expertise league table ---- */
+  ol.rank{list-style:none;margin:0;padding:0}
+  ol.rank li{display:flex;gap:1rem;align-items:baseline;padding:.5rem 0;border-bottom:1px solid var(--border)}
+  ol.rank .r{font-family:var(--mono);font-size:.85rem;color:var(--oxblood);min-width:2.2em}
+  ol.rank .a{font-size:1.02rem}
+  .caveat{margin-top:.8rem;font-size:.9rem;color:var(--muted);font-style:italic}
+
+  /* ---- positions ---- */
+  .pos{padding:1rem 0;border-top:1px solid var(--border)}
+  .pos:last-child{border-bottom:1px solid var(--border)}
+  .pos .claim{font-family:var(--display);font-size:1.22rem;line-height:1.34}
+  .pos .marker{color:var(--oxblood);margin-right:.5em}
+  .pos .support{margin-top:.4rem;color:#444;font-size:.95rem}
+
+  /* ---- stance ---- */
+  .stance{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.4rem}
+  .stance .card{border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;background:var(--paper)}
+  .stance h4{margin:0 0 .7rem;font-family:var(--mono);font-size:.7rem;text-transform:uppercase;
+    letter-spacing:.1em;display:flex;align-items:center;gap:.5em}
+  .dot{width:.55em;height:.55em;border-radius:50%}
+  .dot.bear{background:var(--oxblood)} .dot.bull{background:var(--emerald)}
+  .stance ul{margin:0;padding-left:1.1rem} .stance li{margin:.25rem 0;font-size:.95rem}
+
+  /* ---- voice ---- */
+  .vq{margin:1.6rem 0}
+  .vq q{font-family:var(--display);font-style:italic;font-size:1.4rem;line-height:1.4;quotes:none}
+  .vq q::before,.vq q::after{content:""}
+  .vq .src{display:block;margin-top:.4rem;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+  .vq .src::before{content:"— "}
+
+  /* ---- texture ---- */
+  ol.texture{columns:2;column-gap:2rem;list-style:none;margin:0;padding:0;font-size:.92rem;color:#444}
+  ol.texture li{margin:0 0 .7rem;break-inside:avoid;counter-increment:tx}
+  ol.texture li::before{content:counter(tx,decimal-leading-zero);font-family:var(--mono);
+    font-size:.66rem;color:var(--oxblood);margin-right:.6em}
+  ol.texture{counter-reset:tx}
+
+  /* ---- sidebars ---- */
+  .sidebars{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+  .sidebar{border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;background:var(--paper)}
+  .sidebar h4{margin:0 0 .8rem;font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .sidebar dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:.3rem .9rem}
+  .sidebar dt{font-size:.88rem;color:var(--muted)} .sidebar dd{margin:0;font-size:.9rem}
+  .sidebar .er{display:flex;gap:.7em;margin:.3rem 0;font-size:.9rem}
+  .sidebar .er .e{font-size:1.05rem}
+  .sidebar .note{font-style:italic;color:#444;font-size:.9rem}
+
+  /* ---- coda ---- */
+  .coda{border:1px solid var(--border);border-radius:18px;padding:1.6rem 1.7rem;background:var(--paper)}
+  .coda .clabel{margin-bottom:.4rem}
+  .coda h3{font-family:var(--display);font-weight:500;font-size:1.6rem;margin:.1rem 0 .7rem}
+  .coda p{margin:0 0 1.1rem;color:#333}
+  .deploy{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem}
+  .deploy .d{border:1px solid var(--border);border-radius:12px;padding:.9rem;background:var(--bg)}
+  .deploy .d .t{font-weight:500;display:flex;gap:.5em;align-items:center}
+  .deploy .d .x{font-size:.85rem;color:#555;margin-top:.3rem}
+
+  /* ---- colophon ---- */
+  .colophon{margin-top:3.6rem;padding-top:1.3rem;border-top:1px solid var(--border);
+    font-family:var(--mono);font-size:.72rem;color:var(--muted);line-height:1.7}
+  .restricted{display:inline-block;color:var(--oxblood);border:1px solid rgba(122,31,31,.3);
+    border-radius:999px;padding:.1rem .5rem;margin-bottom:.6rem;letter-spacing:.08em}
+  .colophon .prov{font-style:italic}
+
+  /* ---- two-tier legend ---- */
+  .legend{display:flex;flex-wrap:wrap;gap:1.2rem;margin-top:1.4rem;font-family:var(--mono);
+    font-size:.66rem;color:var(--muted)}
+  .legend .k{display:flex;align-items:center;gap:.45em}
+  .legend .sw{width:.8em;height:.8em;border-radius:3px;display:inline-block}
+  .legend .sw.spine{background:rgba(122,31,31,.16);border:1px solid rgba(122,31,31,.4)}
+  .legend .sw.voice{background:#efece6;border:1px solid var(--border)}
+
+  /* progressive reveal — evokes the "boom, it appears" stream */
+  .rv{opacity:0;transform:translateY(10px)}
+  .js .rv{animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.js .rv{animation:none;opacity:1;transform:none}}
+  @media print{
+    .rv{opacity:1!important;transform:none!important;animation:none!important}
+    html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    section,.coda,.sidebar,.stance .card,.pull,ol.ships li,.pos,.vq{break-inside:avoid}
+    .wrap{padding:24px 22px 40px}
+  }
+
+  @media (max-width:620px){
+    .name{font-size:2.3rem}.masthead{grid-template-columns:1fr}
+    .stance,.deploy{grid-template-columns:1fr}ol.texture{columns:1}
+    ol.ships li{grid-template-columns:auto 1fr}.chip{grid-column:2;justify-self:start;margin-top:.3rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script>
+const P = __PROFILE_JSON__;
+
+// ---- helpers ----
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// tiny inline markdown: **bold**, *italic*
+const inl = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>');
+const has = v => v!=null && !(Array.isArray(v)&&v.length===0) && !(typeof v==='string'&&v.trim()==='');
+// URL scheme allowlist — data is LLM-drafted from chat, so reject javascript:/data:/etc in href.
+const safeUrl = u => { try { const p = new URL(u); return (p.protocol==='http:'||p.protocol==='https:'||p.protocol==='mailto:') ? u : '#'; } catch { return '#'; } };
+// a cite can be a string ("General#L5421") or {label,url}
+function cite(c){
+  if(!has(c)) return '';
+  const arr = Array.isArray(c)?c:[c];
+  return arr.filter(has).map(x=>{
+    if(typeof x==='string') return `<span class="cite">${esc(x)}</span>`;
+    const lbl = esc(x.label||x.channel||x.quote||x.url||'cited');
+    return x.url ? `<a class="cite" href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener">${lbl}</a>`
+                 : `<span class="cite">${lbl}</span>`;
+  }).join('');
+}
+const sec = (eyebrow, inner) => `<section class="rv"><div class="eyebrow label">${esc(eyebrow)}</div>${inner}</section>`;
+
+// ---- block renderers (13, render order; each self-guards) ----
+function masthead(p){
+  const id=p.identity||{};
+  const pieces = (id.displayName||'').trim().split(/\s+/);
+  let nameHtml;
+  if(id.surnameItalic && pieces.length>1){
+    nameHtml = esc(pieces.slice(0,-1).join(' '))+' <span class="sur">'+esc(pieces.slice(-1)[0])+'</span>';
+  } else nameHtml = esc(id.displayName||id.memberNumber||'');
+  const initials = (pieces[0]?.[0]||'')+(pieces.length>1?pieces.slice(-1)[0][0]:'');
+  const port = id.portrait||{};
+  const portInner = port.url ? `<img src="${esc(port.url)}" alt="">` : `<span class="monogram">${esc(initials||'§')}</span>`;
+  const cap = [port.figNumber,port.location,port.year].filter(has).join(' · ');
+  const mb = p.metaBand||{};
+  const rows=[['Member',id.memberNumber],['Based',mb.based],['Role',mb.role],['Practice',mb.practice],['Status',mb.status]];
+  if(has(mb.substack)) rows.push(['Writing',`<a href="${esc(safeUrl(mb.substack.url))}" target="_blank" rel="noopener">${esc(mb.substack.label||'Substack')}</a>`]);
+  const mbHtml = rows.filter(r=>has(r[1])).map(r=>`<div><dt>${esc(r[0])}</dt><dd>${r[1]}</dd></div>`).join('');
+  return `<header class="rv">
+    <div class="dateline"><span class="eyebrow">${esc(id.memberNumber||'')}</span><span class="eyebrow">${esc(id.profileDate||'')}</span></div>
+    <div class="masthead">
+      <div><h1 class="name">${nameHtml}</h1>${has(id.deck)?`<p class="deck">${inl(id.deck)}</p>`:''}</div>
+      ${has(port)||initials?`<figure style="margin:0"><div class="portrait">${portInner}</div>${cap?`<figcaption>${esc(cap)}</figcaption>`:''}</figure>`:''}
+    </div>
+    ${mbHtml?`<dl class="metaband">${mbHtml}</dl>`:''}
+    <div class="legend">
+      <span class="k"><span class="sw spine"></span> from the community record · cited</span>
+      <span class="k"><span class="sw voice"></span> in their words · authored</span>
+    </div>
+  </header>`;
+}
+function lede(p){ if(!has(p.lede)) return '';
+  const paras=(Array.isArray(p.lede)?p.lede:String(p.lede).split(/\n\n+/));
+  return `<section class="lede rv">${paras.map(t=>`<p>${inl(t)}</p>`).join('')}</section>`; }
+function sections(p){ if(!has(p.sections)) return '';
+  return (p.sections||[]).filter(s=>has(s)).map(s=>sec('Section',
+    `<div class="sec"><h3>${s.num?`<span class="num">${esc(s.num)}</span>`:''}${inl(s.title||'')}</h3>
+     ${(s.body||[]).map(b=>`<p>${inl(b)}</p>`).join('')}${cite(s.cite||s.evidence)}</div>`)).join(''); }
+function pullquotes(p){ if(!has(p.pullquotes)) return '';
+  return (p.pullquotes||[]).filter(has).map(q=>`<aside class="pull rv"><q>${inl(q.quote)}</q>${has(q.cite||q.citation)?`<span class="src">${esc(q.cite||q.citation)}</span>`:''}</aside>`).join(''); }
+function projects(p){ if(!has(p.projects)) return '';
+  const li=(p.projects||[]).filter(has).map(pr=>`<li>
+      <span class="pnum">${esc(pr.num||'')}</span>
+      <span><span class="pname">${inl(pr.name)}</span>${has(pr.subLabel)?`<span class="psub">${esc(pr.subLabel)}</span>`:''}</span>
+      <span class="chip ${esc(pr.status||'Built')}">${esc(pr.status||'Built')}</span>
+      <span class="pdesc">${inl(pr.description||'')} ${cite(pr.cite||pr.evidence)}</span>
+    </li>`).join('');
+  return sec('Selected Work — The Ledger',`<ol class="ships">${li}</ol>`); }
+function expertise(p){ const e=p.expertise||{}; if(!has(e.ranked)) return '';
+  const li=(e.ranked||[]).filter(has).map(r=>`<li><span class="r">${String(r.rank).padStart(2,'0')}</span><span class="a">${inl(r.area)}</span></li>`).join('');
+  return sec('Areas of Expertise',`<ol class="rank">${li}</ol>${has(e.caveat)?`<p class="caveat">${inl(e.caveat)}</p>`:''}`); }
+function positions(p){ if(!has(p.positions)) return '';
+  const body=(p.positions||[]).filter(has).map(po=>`<div class="pos">
+     <div class="claim"><span class="marker">${esc(po.marker||'§')}</span>${inl(po.claim)}</div>
+     ${has(po.support)?`<div class="support">${inl(po.support)}</div>`:''}${cite(po.cite||po.evidence)}</div>`).join('');
+  return sec('Positions',body); }
+function stance(p){ const s=p.stance||{}; if(!has(s.bearishOn)&&!has(s.bullishOn)) return '';
+  return sec('Stance',`<div class="stance">
+    <div class="card"><h4><span class="dot bear"></span>Bearish on</h4><ul>${(s.bearishOn||[]).map(x=>`<li>${inl(x)}</li>`).join('')}</ul></div>
+    <div class="card"><h4><span class="dot bull"></span>Bullish on</h4><ul>${(s.bullishOn||[]).map(x=>`<li>${inl(x)}</li>`).join('')}</ul></div>
+  </div>`); }
+function voice(p){ if(!has(p.voice)) return '';
+  const body=(p.voice||[]).filter(has).map(v=>`<blockquote class="vq"><q>${inl(v.quote)}</q>${has(v.citation||v.cite)?`<span class="src">${esc(v.citation||v.cite)}</span>`:''}</blockquote>`).join('');
+  return sec('In Their Own Words',body); }
+function texture(p){ if(!has(p.texture)) return '';
+  return sec('Texture',`<ol class="texture">${(p.texture||[]).map(t=>`<li>${inl(t)}</li>`).join('')}</ol>`); }
+function sidebars(p){ const s=p.sidebars||{}; if(!has(s.atAGlance)&&!has(s.emojiRegister)&&!has(s.note)) return '';
+  let cards='';
+  if(has(s.atAGlance&&s.atAGlance.rows)) cards+=`<div class="sidebar"><h4>At a Glance</h4><dl>${(s.atAGlance.rows||[]).map(r=>`<dt>${esc(r.label)}</dt><dd>${inl(r.value)}</dd>`).join('')}</dl></div>`;
+  if(has(s.emojiRegister)) cards+=`<div class="sidebar"><h4>Emoji Register</h4>${(s.emojiRegister||[]).map(e=>`<div class="er"><span class="e">${esc(e.emoji)}</span><span>${inl(e.meaning)}</span></div>`).join('')}</div>`;
+  if(has(s.note)) cards+=`<div class="sidebar"><h4>Note</h4><div class="note">${inl(s.note)}</div></div>`;
+  return sec('Sidebars',`<div class="sidebars">${cards}</div>`); }
+function coda(p){ const c=p.coda||{}; if(!has(c.heading)&&!has(c.narrative)&&!has(c.deployCards)) return '';
+  return `<section class="rv"><div class="coda">
+    ${has(c.label)?`<div class="eyebrow clabel">${esc(c.label)}</div>`:''}
+    ${has(c.heading)?`<h3>${inl(c.heading)}</h3>`:''}
+    ${has(c.narrative)?`<p>${inl(c.narrative)}</p>`:''}
+    ${has(c.deployCards)?`<div class="deploy">${(c.deployCards||[]).map(d=>`<div class="d"><div class="t">${has(d.icon)?`<span>${esc(d.icon)}</span>`:''}${inl(d.title)}</div><div class="x">${inl(d.description)}</div></div>`).join('')}</div>`:''}
+  </div></section>`; }
+function colophon(p){ const c=p.colophon||{}; const a=p.audit||{};
+  return `<footer class="colophon rv">
+    ${has(c.restrictedTag)?`<div class="restricted">${esc(c.restrictedTag)}</div><br>`:''}
+    <span class="prov">${esc(c.provenance||"Drafted from this member's LegalQuants community record by Claude + LQ MCP.")}</span><br>
+    LegalQuants Living Profile · schema v${esc((a.schemaVersion!=null?a.schemaVersion:1))}${has(a.lastSuggestedAt)?` · last updated ${esc(a.lastSuggestedAt)}`:''}
+  </footer>`; }
+
+const ORDER=[masthead,lede,sections,pullquotes,projects,expertise,positions,stance,voice,texture,sidebars,coda,colophon];
+document.getElementById('root').innerHTML = ORDER.map(f=>{try{return f(P)||''}catch(e){return ''}}).join('');
+
+// progressive reveal
+document.documentElement.classList.add('js');
+const blocks=[...document.querySelectorAll('.rv')];
+blocks.forEach((b,i)=>b.style.animationDelay=(Math.min(i,14)*70)+'ms');
+document.title = (P.identity&&(P.identity.displayName||P.identity.memberNumber)||'Living Profile')+' · LegalQuants';
+</script>
+</body>
+</html>
