@@ -35,8 +35,8 @@ submit it as ONE pending **proposal**, and point them to the website to review a
 
 ## Step 0 — Pre-flight: confirm the connector is reachable (BEFORE doing anything)
 
-1. **Tools present?** Check for the lq-mcp tools (`whoami`, `read`, `grep`, and the submit tool
-   `submit_profile_proposal`). If you see a native **Authenticate** action but no tools yet, the
+1. **Tools present?** Check for the lq-mcp tools (`whoami`, `read`, `grep`, `get_my_profile`, and the
+   submit tool `submit_profile_proposal`). If you see a native **Authenticate** action but no tools yet, the
    connector IS wired — the member just hasn't signed in. Tell them to run **Authenticate (native
    OAuth sign-in)**, then re-run `/lq:update`. Treat it as absent only when no LegalQuants tool exists.
 2. **Authenticated?** Run `whoami`. On an auth error (401 / OAuth prompt), prefer the connector's
@@ -68,8 +68,19 @@ The update comes from **what the member tells you**, optionally enriched by thei
    GitHub / release links, a media mention + URL, a bio/philosophy rewrite. Hosted links only;
    local files (a video/screenshot on disk) are uploaded by the member on the website review screen,
    not here.
-2. **Read their current profile** so you diff against it: `read({ref:'members/builder-NNN.md'})`
-   (and the live record if available). Every `FieldChange.before` is the current value.
+2. **Read their LIVE profile so you diff against what's ACTUALLY published — not a stale snapshot.**
+   For the caller's own update, call **`get_my_profile`** → `{ ok, profileKey, profile }`. `profile` is
+   the masked live `Lawyer` record: the real scalars (bio, tagline, title, location, linkedin, substack,
+   github, appsUrl) plus the **current** `projects`, `media`, and `philosophy` arrays. Set each
+   `FieldChange.before` from this live value. **Before any `append`, scan the live array first** — match
+   a project by `id`/`title`, media by `url`/`title`, philosophy by `name` — and **never re-append
+   something already there** (this is what prevents duplicate press/projects). On `ok:false`:
+   `profile_not_published` → tell them to publish their profile first; `not_authenticated` /
+   `profile_write_not_granted` → route to Authenticate / `/lq:start`. If `profile` is somehow absent,
+   warn that duplicates are possible and proceed cautiously.
+   *(The corpus snapshot `members/builder-NNN.md` lacks `media` entirely and lags ~a week — do not diff
+   against it. Operator `--member` drafts for someone else still read `members/builder-NNN.md`; there is
+   no live read of another member's profile.)*
 3. **Footprint enrichment (optional, only if they want it).** `grep({author:'builder-NNN',
    limit:400})` (query omitted) lists everything they said; `scan_thread` recovers context; cite the
    `quote` + `channel` + `date` as evidence. **Exclude the LQClaw bot.** Offer enrichment ("want me
