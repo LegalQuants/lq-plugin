@@ -34,13 +34,26 @@ its values and default).
 
 ## Provenance discipline (the load-bearing habit)
 
-- **`source: chat` = verbatim, dated, attributable.** A real message someone sent at a
-  point in time. Cite it as a quote with its date and the pseudonymous author.
-- **`source: brain` = synthesized opinion**, evergreen and curated — **not** a quote.
-  Never present a brain note as something a member literally said; never present a
-  single chat message as the community's settled position.
-- Keep the two straight in every answer. If you're quoting, it's chat. If you're
-  characterizing "the community's take," it's brain (and say so).
+**Default: one synthesized answer, one voice.** Merge what you find across both sources
+into a single answer. When chat and brain agree (the common case), say it once — no
+source labels, no "according to the vault / in chat" scaffolding. The chat/brain
+distinction lives in your *reasoning*, not on the surface.
+
+Surface the source ONLY when it changes the meaning — two cases:
+
+- **Quoting vs characterizing consensus.** A `source: chat` hit is *one member at one
+  time* — phrase it as "one member argued…", never as "the community thinks…". A
+  `source: brain` note IS the community's synthesized position — phrase it as the settled
+  view, never as something a named person literally said. Getting this wrong is
+  misattribution (a lone hot take dressed as consensus, or a synthesis dressed as a quote).
+- **When they diverge.** If chat shows newer movement than the brain note, the divergence
+  *is* the answer: "the established take is X, though recently in chat people moved toward
+  Y." That's the one time you name a date — inline, load-bearing, from a record read
+  **this run**, never from memory or a prior session.
+
+**Never** open or close with a manufactured provenance header asserting specific corpus
+dates ("freshest note YYYY-MM-DD; chat through YYYY-MM-DD") — those are factual claims
+that rot the moment they're quoted back.
 
 ## Judgment that makes answers good
 

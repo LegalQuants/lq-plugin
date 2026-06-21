@@ -101,10 +101,13 @@ Synthesize **one** answer from the two returns:
 2. **Ground it with chat's primary source** — who advanced it, when, and the most recent movement.
 3. **Reconcile divergence — this matters:** the brain vault is *synthesized and can lag the live chat*.
    If chat shows a **more recent** development than the brain note's `date`, **prefer the chat signal
-   and flag that brain is behind** ("the vault's take is from [date]; more recently in chat, …").
+   and flag that brain is behind** ("the vault's take is older; more recently in chat, …"). Cite a
+   specific date only when it's load-bearing to *this* reconciliation, and only a date you read in a
+   record returned **this run** — never a standing dated provenance header, never a date from memory.
    If they agree, say so — that's a strong, well-grounded answer.
-4. **Cite both** — brain note slugs (`[[The Orchestration Layer]]`) *and* chat provenance
-   (`General#L5421`). Distinguish them: synthesis vs verbatim.
+4. **Cite where it earns it** — name a brain note or a chat message when it's load-bearing
+   or quoted, not as a reflexive dual-citation. One synthesized answer; surface the source
+   only on quote-vs-consensus or on divergence (Step 3).
 5. If one explorer found nothing, say so plainly and lean on the other — don't fabricate balance.
 6. If an explorer returns **"unavailable"** (its `lq-mcp` tools were absent or 401'd mid-run), treat that
    source as missing — say so plainly, don't fill the gap from disk or training knowledge. If BOTH return
