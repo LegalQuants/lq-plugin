@@ -1,123 +1,89 @@
 ---
 name: ask
 description: |
-  Cross-source synthesis for the LegalQuants community knowledge plugin. Run when the user types
-  /lq:ask "<question>". Acts as the lq-orchestrator: fans out over BOTH sources in parallel — the
-  primary-source chat (who/when/verbatim/recency) and the synthesis vault (positions, debates, MOCs) —
-  then merges into one cited answer. Use for "what does the community think + what's the latest"
-  questions that want both the evergreen position AND its primary-source grounding.
-  Most everyday questions don't need this — the auto-loaded lq-mcp guidance handles single-source
-  queries fine. Reach for /lq:ask when a question genuinely spans both. Never invoke proactively.
+  Deep, fan-out synthesis over the LegalQuants community corpus. Run when the user types
+  /lq:ask "<question>". Use this whenever a LegalQuants question wants real thinking rather than a
+  lookup — "what does the community actually believe about X", "what's the smart take on Y", "what am
+  I missing on Z", "make sense of the debate on W". One lq-mcp connector spans both corpora (verbatim
+  chat + the synthesis vault); this skill dispatches a team of scouts across them and synthesizes one
+  genuine insight. Quick single-fact lookups don't need it — the auto-loaded lq-mcp guidance handles
+  those. Never invoke proactively.
 ---
 
-# /lq:ask — cross-source synthesis (the orchestrator)
+# /lq:ask — go deep
 
-The member asked a question that wants **both** the community's synthesized *position* and its
-primary-source *grounding*. You are the **orchestrator**: fan out over both sources in parallel, then merge.
+The member doesn't want a summary. They want you to **think**: send a team across the LegalQuants
+corpus, gather far more raw material than one pass could, and come back with the sharpest, truest,
+most non-obvious thing you can honestly say.
 
-## When this is the right tool
+You are the **orchestrator**. Your job is two moves: **design the hunt**, then **synthesize the
+insight**. The scouts gather; you are the one mind that draws the conclusion.
 
-- ✅ "What does the community think about X, and where does that come from / what's the latest?"
-- ✅ "Synthesize the thinking on Y and back it with who actually said it."
-- ✅ Questions where the brain's evergreen take might be **out of date** vs recent chat.
-- ❌ Pure attribution/recency ("who said X", "latest on X") → just query `source:chat` directly.
-- ❌ Pure synthesis ("the community's position on X") → just query `source:brain` directly.
+## What you're working with
 
-If the question is clearly one-sided, say so and use a single source instead of fanning out.
+One connector, two corpora, behind one set of tools (the tool descriptions cover the mechanics —
+this skill won't repeat them):
+- **chat** — what members actually said: verbatim, dated, attributable. The primary source, and where
+  the texture lives.
+- **vault / "brain"** — the community's synthesized positions, debates, and how ideas connect. Good
+  for orienting on the shape of a topic.
 
-## Step 0 — Pre-flight: confirm the corpus is reachable (BEFORE fanning out)
+## Move 1 — Design the hunt (fan out)
 
-Do NOT spawn the explorers until you've confirmed the `lq-mcp` tools are present **and**
-authenticated — fanning out into an unauthenticated connector just fails twice and wastes the run.
+Break the question into **distinct angles** and dispatch one scout per angle, in parallel (a single
+message with all the Agent/Task calls). You decide the angles and the count — scale it to the
+question: a rich, contested topic earns ~8–12 scouts; a narrow one, 4. Weight the team toward the
+**chat** (it's the primary source and carries the most signal), with a few on the **vault** for
+structure.
 
-1. **Tools present?** Check your available tools for the `lq-mcp` corpus tools (`read`, `grep`,
-   `list`, …). If you see a native **Authenticate** action for the connector (an
-   auth / OAuth / "authenticate" entry) but no corpus tools yet, the connector **is** wired —
-   the member just hasn't signed in. Don't treat that as "Not connected": instead, instruct the
-   user to **run the connector's Authenticate (native OAuth sign-in)**, then re-run `/lq:ask`.
-   Only treat the connector as truly absent — and go to **Not connected** — when **no** LegalQuants
-   tool is present at all (neither corpus tools nor an Authenticate / auth entry).
-2. **Authenticated?** If the tools are present, run ONE cheap probe (e.g. `list` at the root, or a
-   tiny `grep`). If it returns an auth error (401 / "unauthorized" / "not authenticated" / an OAuth
-   prompt), prefer the connector's **Authenticate (native OAuth sign-in)** first; if that isn't
-   available, fall back to `/lq:start --signin` (which also tries native OAuth first, then device-code). If neither path is
-   available → go to **Not connected**.
-3. Only if the probe returns real corpus data → proceed to Step 1.
+The value is **diversity**, not volume — ten scouts running the same search is waste. Give each a
+*different lens* so that together they surface what a single pass would miss. Mix angle types, e.g.:
+- a specific sub-question the main question depends on,
+- a particular person, project, or thread to trace,
+- a time window — especially the most recent stretch, where the live view is,
+- the **dissent**: who disagrees, and why,
+- the **steelman of the opposite** conclusion,
+- a cross-topic connection (does this link to something the community discussed elsewhere?),
+- the vault's relevant hub/MOC note, to map the shape before diving into chat.
 
-### Not connected — fail fast, route to /lq:start
-Do **not** fan out, and do **not** answer from your own training knowledge. Stop and say, plainly:
+Invent the angles that fit *this* question — the list above is a prompt for your own creativity, not a
+checklist. Brief each scout in your own words.
 
-> I can't reach the LegalQuants corpus — looks like you're not connected yet. If Claude offers an
-> **Authenticate** action for lq-mcp, run it (native OAuth). Otherwise run **`/lq:start`** (legacy
-> device-code sign-in), or set your guest `LQ_MCP_TOKEN` for guest access. Then re-run your `/lq:ask`.
-> I didn't make anything up.
+**What every scout must do:**
+- Use ONLY the `lq-mcp` tools (with `source:chat` or `source:brain` as fits its angle). Never read the
+  corpus from the local filesystem or from training knowledge — those are operator-only / wrong and
+  would silently break the answer. If its tools error, return what it has and say so.
+- **Return raw material, not a finished answer** — the actual quotes/notes with who-said-it and when,
+  and the tension or pattern it noticed. You will do the synthesizing; a scout that hands back a tidy
+  conclusion has thrown away the texture you need.
+- Hunt for the non-obvious: chase disagreement over consensus, follow the thread that looks alive,
+  don't stop at the first good-enough hit.
 
-Then end — one short message; don't dump connector internals or OAuth-bootstrap details.
+## Move 2 — Synthesize the insight (you)
 
-## Step 1 — Fan out (PARALLEL — both in one message)
+Now read everything the scouts surfaced and form **your own conclusion**. This is the step that makes
+or breaks the answer, so do the thinking yourself — do **not** staple the scout reports together or
+write a section per scout.
 
-Spawn **two `general-purpose` subagents at once** (a single message with two Agent/Task calls, so they
-run concurrently). Each gets the question verbatim plus a corpus-specific brief.
+A great answer:
+- Says something true and non-obvious — a pattern, tension, or shift the member wouldn't have caught
+  by skimming the channel. The sharp take that makes them glad they asked.
+- Takes a position. Where the evidence points somewhere, say so plainly in your own voice — don't
+  retreat into a neutral list of "perspectives."
+- Connects dots across people, threads, and time that aren't connected on the surface.
+- Triangulates: a claim several members converge on over weeks is real signal; a lone confident
+  message is a lead, not a conclusion.
 
-### HARD RULE — corpus comes ONLY from the lq-mcp tools, NEVER from local disk (applies to BOTH explorers)
+Lead with the insight. Cite the few messages or notes that carry it — skip provenance headers and
+date-stamping; they add noise, not trust.
 
-The explorers are `general-purpose` subagents with filesystem access, so you MUST bind them tightly:
-the **only** way they may reach the corpus is through the `lq-mcp` tools (`read` / `grep` / `list` / etc.).
-They must **NEVER** read the chat or vault from the local filesystem — not `packages/lqbrain/content`,
-not `sanitized/`, not `raw/`, not any local vault/chat path, not via `Read` / `Grep` / `Glob` / `Bash`
-(`cat`, `find`, …). Those files exist only on operator machines and are **absent for every real member**,
-so reading them yields a **false, machine-dependent answer** that would silently break for anyone else.
-If the `lq-mcp` tools are absent, or any tool returns an auth error (401 / "unauthorized" / "not
-authenticated" / an OAuth prompt), the explorer must return exactly **"unavailable"** and stop — it must
-**NOT** fall back to disk, to its own training knowledge, or to any other source. (Pre-flight in Step 0
-should already have caught this; this rule is the backstop in case a connection drops mid-run.)
+## The few things that keep it honest
 
-**chat-explorer** (uses ONLY the lq-mcp tools with `source:chat` — read / grep / list / scan_thread / read_attachment / fetch_url):
-> Research this question in the LegalQuants **primary-source chat**: «QUESTION».
-> Use ONLY the `lq-mcp` tools — NEVER read the chat from the local filesystem (no `Read`/`Grep`/`Glob`/`Bash`,
-> no `sanitized/` or `raw/` or `packages/` path); those exist only on operator machines and would give a
-> false answer. If the `lq-mcp` tools are missing or return an auth error, reply exactly "unavailable" and stop.
-> Read `README.md` + `GLOSSARY.md` first. Find who said what, when, and the *most recent* take
-> (sort hits by date desc; weight the last few weeks). Return: 3–6 findings, each with a
-> `Channel#Lline` citation + date + pseudo-ID/role; flag the single most recent development; note if
-> the topic evolved. Exclude the LQclaw bot. Be concise — bullet findings, not prose.
-
-**brain-explorer** (uses ONLY the lq-mcp tools with `source:brain` — read / grep / list / traverse_graph / fetch_url; `traverse_graph` is brain-only):
-> Research this question in the LegalQuants **synthesis vault (LQBrain)**: «QUESTION».
-> Use ONLY the `lq-mcp` tools — NEVER read the vault from the local filesystem (no `Read`/`Grep`/`Glob`/`Bash`,
-> no `packages/lqbrain/content` or any local vault path); those exist only on operator machines and would give
-> a false answer. If the `lq-mcp` tools are missing or return an auth error, reply exactly "unavailable" and stop.
-> Read `index.md` + `ask.md` first. Find the relevant MOC(s), insights, and any `debates/` note;
-> use `traverse_graph` to map how the idea connects. Return: the community's synthesized position
-> (or the tension if it's a debate), 3–6 supporting notes by slug, and whether it's framed as
-> settled or contested. Note the notes' `date`/`created` so staleness can be judged. Be concise.
-
-## Step 2 — Merge (you, the orchestrator)
-
-Synthesize **one** answer from the two returns:
-
-1. **Lead with the brain's synthesized position** — the community's evergreen take (or the debate's
-   sides, if contested — don't flatten a debate into false consensus).
-2. **Ground it with chat's primary source** — who advanced it, when, and the most recent movement.
-3. **Reconcile divergence — this matters:** the brain vault is *synthesized and can lag the live chat*.
-   If chat shows a **more recent** development than the brain note's `date`, **prefer the chat signal
-   and flag that brain is behind** ("the vault's take is older; more recently in chat, …"). Cite a
-   specific date only when it's load-bearing to *this* reconciliation, and only a date you read in a
-   record returned **this run** — never a standing dated provenance header, never a date from memory.
-   If they agree, say so — that's a strong, well-grounded answer.
-4. **Cite where it earns it** — name a brain note or a chat message when it's load-bearing
-   or quoted, not as a reflexive dual-citation. One synthesized answer; surface the source
-   only on quote-vs-consensus or on divergence (Step 3).
-5. If one explorer found nothing, say so plainly and lean on the other — don't fabricate balance.
-6. If an explorer returns **"unavailable"** (its `lq-mcp` tools were absent or 401'd mid-run), treat that
-   source as missing — say so plainly, don't fill the gap from disk or training knowledge. If BOTH return
-   "unavailable", stop and route the member exactly as in **Not connected** (Authenticate first, then
-   `/lq:start` / guest token) — don't answer.
-
-## Conventions
-
-- Members are pseudonymous in chat (`builder-NNN` / role descriptors); brain `people/` notes are the
-  public directory. Don't cross-contaminate chat attribution with real names.
-- Stop when the answer is cited from 2–3 records per side. No confirmation theater.
-- This is a power-user surface. If `/lq:ask` was invoked but the question is trivial or one-sided,
-  it's fine to answer directly from one source and note that the full fan-out wasn't needed.
+- **Corpus, not memory.** Every claim grounded in what the tools returned. If the connector isn't
+  present or comes back unauthorized, don't fan out into a dead connector — say so in one line and
+  point the member to `/lq:start` (or the connector's Authenticate).
+- **Chat is authoritative.** If chat and the vault seem to pull different ways, or you're unsure,
+  trust the chat. Don't manufacture a contradiction between them — same community, synced together; a
+  note's date is when something was *discussed*, not how fresh it is.
+- **One voice isn't the room.** A single message is one member's take, not consensus — say it that
+  way. The vault's notes are the synthesized position; don't put their words in a named person's mouth.

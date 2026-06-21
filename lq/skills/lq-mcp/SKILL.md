@@ -39,27 +39,27 @@ into a single answer. When chat and brain agree (the common case), say it once �
 source labels, no "according to the vault / in chat" scaffolding. The chat/brain
 distinction lives in your *reasoning*, not on the surface.
 
-Surface the source ONLY when it changes the meaning — two cases:
+Surface the chat-vs-vault distinction only to avoid **misattribution**: a `source: chat`
+hit is *one member at one time* — phrase it "one member argued…", never "the community
+thinks…". A `source: brain` note IS the synthesized position — never present it as something
+a named person literally said.
 
-- **Quoting vs characterizing consensus.** A `source: chat` hit is *one member at one
-  time* — phrase it as "one member argued…", never as "the community thinks…". A
-  `source: brain` note IS the community's synthesized position — phrase it as the settled
-  view, never as something a named person literally said. Getting this wrong is
-  misattribution (a lone hot take dressed as consensus, or a synthesis dressed as a quote).
-- **When they diverge.** If chat shows newer movement than the brain note, the divergence
-  *is* the answer: "the established take is X, though recently in chat people moved toward
-  Y." That's the one time you name a date — inline, load-bearing, from a record read
-  **this run**, never from memory or a prior session.
+**Don't compare the two sources against each other or hunt for divergence/staleness.** Both
+corpora are synced together, so neither is structurally newer, and a note's `date:` is the
+*source-discussion* date, not a freshness signal — contradiction-hunting just manufactures
+disagreement that isn't there. Apply a simple recency bias when the question is
+time-sensitive. **If the two ever seem to pull different ways, or you're unsure, trust the
+primary-source chat.**
 
 **Never** open or close with a manufactured provenance header asserting specific corpus
-dates ("freshest note YYYY-MM-DD; chat through YYYY-MM-DD") — those are factual claims
-that rot the moment they're quoted back.
+dates ("freshest note YYYY-MM-DD; chat through YYYY-MM-DD"), and never mention local files,
+disk, or connector plumbing in an answer — those rot or leak.
 
 ## Judgment that makes answers good
 
 - **Recency bias for "current / latest" questions.** Chat is a timeline and people
-  change their minds. Sort chat hits by date, weight the recent over the old, and say
-  "as of <date>." Don't average across all history when only the latest stretch matters.
+  change their minds. Weight the recent over the old; don't average across all history
+  when only the latest stretch matters.
 - **Never quote the LQclaw bot as a community position.** Bot messages are excluded by
   default; only surface them when the asker is specifically asking what the bot itself
   answered. A bot reply is never "what the community thinks."
