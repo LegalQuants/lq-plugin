@@ -23,11 +23,12 @@ A `FieldChange` whose `path` root is not in this list is refused by the server.
   - `id` — a stable kebab/slug id you generate from the title (e.g. `global-ai-regulation-tracker`)
 - `media` — `{ outlet, title, url, description? }`
 - `philosophy` — `{ name, body }`  (`name` = the principle/quote, `body` = the explanation)
-- `highlights` — `{ label, value }`
 
 **Don't emit these:** `slug`, `batch`, `status`, `visible`, rank/cohort/system fields — the server
-rejects them. And although the server *allows* `profilePhoto`, the skill should **not** draft it:
-photos and local files are uploaded by the member on the website review screen, not here.
+rejects them. Two more the server *allows* but the skill should **not** draft:
+- `profilePhoto` — photos and local files are uploaded by the member on the website review screen, not here.
+- `highlights` — invisible `{label,value}` search tags that don't render on the profile (they only feed
+  directory search). Out of scope for `/lq:update`; the member curates those in the website editor.
 
 ## The `FieldChange` object
 
@@ -42,8 +43,8 @@ photos and local files are uploaded by the member on the website review screen, 
 ```
 
 ### `op` semantics (exact — server applies it this way)
-- **`append`** (arrays only): `after` is **ONE new element** (a single project/media/philosophy/
-  highlight object). The server reads the current array and pushes it. Use this to ADD an item.
+- **`append`** (arrays only): `after` is **ONE new element** (a single project/media/philosophy
+  object). The server reads the current array and pushes it. Use this to ADD an item.
 - **`set`**: `after` **replaces the whole field**. For a scalar (bio, tagline…) `after` is the new
   string. For an array, `after` is the **entire new array** (only when genuinely rewriting the list).
 - **`replace`**: same as `set` (whole-field replace); prefer `set` for clarity.
