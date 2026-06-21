@@ -4,27 +4,27 @@ Mirrors the real `legalquant` `types/beta-profile.ts` / `BetaProfileSchema` (`.s
 `BETA_SCHEMA_VERSION = 1`. Render order = the 13 blocks below (each self-guards / may be omitted).
 **[VOICE]** = authored, no citation. **[SPINE]** = earned, attach a `cite` (the renderer shows it as
 an oxblood `▣ Channel#Lline` pill). A `cite` is a string (`"General#L5421"`, a date, or
-`"members/builder-016.md"`) or `{label,url}` — or an array of those.
+`"members/builder-000.md"`) or `{label,url}` — or an array of those.
 
 ```jsonc
 {
   "identity": {                         // masthead
-    "memberNumber": "builder-016",      // required, the pseudo-id
+    "memberNumber": "builder-000",      // required, the pseudo-id
     "profileDate": "June 2026",         // editorial dateline (optional)
-    "displayName": "Raymond Sun",       // the SUBJECT's own name is fine; others stay builder-NNN
+    "displayName": "Jane Member",       // the SUBJECT's own name is fine; others stay builder-NNN
     "surnameItalic": true,              // render surname italic in the masthead (optional)
     "deck": "...",                      // [VOICE] standfirst under the name, max 600
-    "portrait": { "url":"", "caption":"", "figNumber":"Fig. 1", "location":"Sydney", "year":"2026" } // optional; omit url → initials medallion
+    "portrait": { "url":"", "caption":"", "figNumber":"Fig. 1", "location":"London", "year":"2026" } // optional; omit url → initials medallion
   },
-  "metaBand": { "based":"Sydney", "role":"Tech Lawyer", "practice":"Legal AI",   // [VOICE]
+  "metaBand": { "based":"London", "role":"Legal Engineer", "practice":"Contract automation",   // [VOICE]
                 "substack":{ "label":"Substack", "url":"https://..." }, "status":"Active" },
   "lede": "Opening paragraph(s). Drop-cap. Can be a string or array of paragraphs.", // [VOICE] max ~2000
 
   "sections": [ { "num":"01", "title":"...", "body":["para","para"], "cite":"General#L1234" } ], // [SPINE] body item max 4000
   "pullquotes": [ { "quote":"...", "cite":"AI Research#L88" } ],                    // [SPINE] quote max 600
   "projects": [ { "num":"01", "name":"Redline Copilot", "subLabel":"Web App",      // [SPINE]
-                  "description":"...", "status":"Built|Shipped|Live", "cite":"members/builder-016.md > Ships" } ],
-  "expertise": { "ranked":[ { "rank":1, "area":"AI regulation" } ], "caveat":"" },  // [SPINE] area max 160, rank 1-99
+                  "description":"...", "status":"Built|Shipped|Live", "cite":"members/builder-000.md > Ships" } ],
+  "expertise": { "ranked":[ { "rank":1, "area":"Contract automation" } ], "caveat":"" },  // [SPINE] area max 160, rank 1-99
   "positions": [ { "marker":"§", "claim":"...", "support":"...", "cite":"Local Models#L502" } ], // [SPINE] claim max 600
   "stance": { "bearishOn":["..."], "bullishOn":["..."] },                          // [VOICE] items max 200
   "voice": [ { "quote":"their actual words from chat", "citation":"General#L5421 · 2026-05-30" } ], // [SPINE] quote max 800
