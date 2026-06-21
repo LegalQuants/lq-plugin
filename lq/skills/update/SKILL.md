@@ -103,9 +103,24 @@ skill. Follow it exactly.
   (field, what it adds/changes, the evidence). This is the truthful preview: it is exactly what
   they'll review and publish. Let them edit/cut before you submit.
 
+## Step 3.5 — Confirm in chat, then STOP (do not submit yet)
+
+This is the cheap iteration loop — keep it in chat, where editing is free and nothing touches the
+website. After showing the diff:
+
+- **Ask explicitly and WAIT.** End with a yes/no: *"Submit these N updates? I won't send anything to
+  the website until you say go."* Do **not** call `submit_profile_proposal` until the member clearly
+  approves.
+- **Iterate in chat (the default).** If they want different wording, an add, or a cut, revise the
+  `FieldChange`s and re-show the diff — loop here as many times as needed. Every round is free, and
+  the website never sees a half-baked draft.
+- **Iterating after a submit is safe too:** a later `/lq:update` *supersedes* the prior pending draft
+  server-side, so resubmitting never piles up junk — but prefer to get it right here, before the
+  first submit.
+
 ## Step 4 — Submit the proposal (own profile only)
 
-Once the member approves the set, submit ONE proposal via the lq-mcp tool:
+Only after the member's explicit **yes** in Step 3.5, submit ONE proposal via the lq-mcp tool:
 
 ```
 submit_profile_proposal({ target: 'classic', changes: [ ...FieldChange ] })
@@ -114,9 +129,14 @@ submit_profile_proposal({ target: 'classic', changes: [ ...FieldChange ] })
 (The tool carries the member's authenticated identity and `profile:write` scope server-side; you
 never handle a token.) Handle the result:
 
-- **created (`201`)** → tell the member it's drafted and give the review link:
-  > Drafted N updates from what you told me. Review and publish them at
-  > **legalquants.com/profile/updates** — nothing changes on your public profile until you do.
+- **created (`201`)** → tell the member (flowing prose) it's drafted, and give the review link. If the
+  response includes **`supersededCount > 0`**, add plainly that it replaced their earlier waiting draft:
+  > Drafted N updates from what you told me — review and publish them at
+  > **legalquants.com/profile/updates**; nothing changes on your public profile until you do.
+
+  If `supersededCount > 0`, append: *"This replaces the draft you had waiting, so only this latest set
+  is on your review page."* And if they want to tweak something after submitting, just run
+  `/lq:update` again — the older draft is auto-superseded, so the review page stays clean.
 - **invalid (`422`)** → some changes failed validation (bad field or a third-party-name flag).
   Report which, fix or drop them, and resubmit.
 - **not published (`409`)** → the member's profile is still a draft:
