@@ -1,32 +1,50 @@
 #!/bin/sh
-# Invariant guard: the native-OAuth cutover must NOT disturb the protected surfaces.
-#   A) Structural (always): the guest backdoor + {} fallthrough in the helper are
-#      intact, and the server still accepts the three credential types (guest shape,
-#      OAuth issuer, Firebase cookie).
+# Invariant guard: the native-OAuth-only connector must NOT regress.
+#   A) Structural (always): the connector is headersHelper-free (a headersHelper
+#      suppresses native-OAuth refresh-token persistence — the daily-reauth bug;
+#      see plan/lq-oauth-refresh-fix), the dead auth hook is gone, and the SERVER
+#      still accepts the three credential types (guest shape, OAuth issuer,
+#      Firebase cookie) — server support is intentionally unchanged.
 #   B) Diff (when a `main` ref exists): committed changes vs main touch none of the
-#      forbidden paths (lib/* verifiers, the route.ts auth classifier), and the
-#      helper's guest branch / {} fallthrough are byte-unchanged vs main.
+#      forbidden paths (lib/* verifiers, the route.ts auth classifier).
 #
 # Exit 0 only if all enforced checks pass.
 
 set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/../../.." && pwd)
-HELPER="$ROOT/plugin/lq/hooks/lq-auth-header.sh"
+MCP_JSON="$ROOT/plugin/lq/.mcp.json"
+HOOK="$ROOT/plugin/lq/hooks/lq-auth-header.sh"
 ROUTE="$ROOT/packages/lq-mcp/app/api/mcp/[transport]/route.ts"
 fail=0
 has(){  if grep -qE  "$2" "$1" 2>/dev/null; then echo "  PASS  $3"; else echo "  FAIL  $3"; fail=1; fi; }
-hasF(){ if grep -qF  "$2" "$1" 2>/dev/null; then echo "  PASS  $3"; else echo "  FAIL  $3"; fail=1; fi; }
 
-[ -r "$HELPER" ] || { echo "FATAL: missing $HELPER"; exit 2; }
-[ -r "$ROUTE" ]  || { echo "FATAL: missing $ROUTE"; exit 2; }
+[ -r "$MCP_JSON" ] || { echo "FATAL: missing $MCP_JSON"; exit 2; }
+[ -r "$ROUTE" ]    || { echo "FATAL: missing $ROUTE"; exit 2; }
 
 echo "invariants.sh"
 
-# A) Helper backdoor + fallthrough intact
-hasF "$HELPER" 'LQ_MCP_TOKEN' "helper: guest \$LQ_MCP_TOKEN branch present"
-hasF "$HELPER" "printf '{}'"  "helper: {} fallthrough present"
+# A) Connector is pure native OAuth — no injected auth headers, no dead hook.
+#    Either a `headersHelper` OR a static `headers` block makes Claude Code source
+#    auth externally and stop persisting the native-OAuth refresh token → daily
+#    re-auth (the bug this PR fixes). Guard BOTH.
+if grep -qE '"(headersHelper|headers)"' "$MCP_JSON"; then
+  echo "  FAIL  .mcp.json must inject no auth (headersHelper/headers break native-OAuth refresh persistence)"; fail=1
+else
+  echo "  PASS  .mcp.json injects no auth headers (pure native OAuth)"
+fi
+# Positive shape: it really is the http lq-mcp connector.
+if grep -q '"type": "http"' "$MCP_JSON" && grep -q 'lq-mcp.vercel.app/api/mcp/mcp' "$MCP_JSON"; then
+  echo "  PASS  .mcp.json registers the http lq-mcp connector"
+else
+  echo "  FAIL  .mcp.json missing the expected http lq-mcp registration"; fail=1
+fi
+if [ -e "$HOOK" ]; then
+  echo "  FAIL  dead hook lq-auth-header.sh still present"; fail=1
+else
+  echo "  PASS  dead auth hook removed"
+fi
 
-# A) Server still routes the three credential types
+# A) Server still routes the three credential types (support unchanged).
 has "$ROUTE" 'isGuestToken'            "route.ts: guest token shape-check present"
 has "$ROUTE" 'verifyOAuthAccessToken'  "route.ts: OAuth access-token verification present"
 has "$ROUTE" 'verifySessionCookie'     "route.ts: Firebase session-cookie verification present"
@@ -41,12 +59,6 @@ if git -C "$ROOT" rev-parse --verify -q main >/dev/null 2>&1; then
     echo "  FAIL  committed diff vs main touches forbidden paths:"; printf '        %s\n' $bad; fail=1
   else
     echo "  PASS  committed diff vs main touches no lib/* or route.ts auth classifier"
-  fi
-  if git -C "$ROOT" diff "$base" HEAD -- plugin/lq/hooks/lq-auth-header.sh 2>/dev/null \
-       | grep -qE '^[-+].*(LQ_MCP_TOKEN|printf .\{\})'; then
-    echo "  FAIL  helper guest branch / {} fallthrough changed vs main"; fail=1
-  else
-    echo "  PASS  helper guest branch / {} fallthrough unchanged vs main"
   fi
 else
   echo "  SKIP  no 'main' ref — diff guard skipped (structural checks still enforced)"

@@ -15,8 +15,8 @@ here for tool mechanics; look here for how to use them well.**
 
 If the `lq-mcp` tools aren't in your toolset, or a call returns an auth error (401 /
 "unauthorized" / an OAuth prompt), the connector isn't set up — **don't answer from your own
-training knowledge.** Tell the user to run **`/lq:start`** to connect (sign in, or set the guest
-`LQ_MCP_TOKEN`), then retry. Keep it to one short message; don't improvise the corpus.
+training knowledge.** Tell the user to run **`/lq:start`** to connect (sign in via the connector's
+Authenticate), then retry. Keep it to one short message; don't improvise the corpus.
 
 ## One connector, two corpora
 

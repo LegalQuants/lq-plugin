@@ -1,4 +1,4 @@
-# lq — LegalQuants Claude Code plugin (v0.6.0)
+# lq — LegalQuants Claude Code plugin (v0.7.0)
 
 One-install access to the LegalQuants community chat archive via MCP, with an "I know you"
 cold-start and member sign-in.
@@ -19,21 +19,11 @@ to paste: the connector opens LegalQuants sign-in in your browser, you sign in w
 your **published** LegalQuants profile, and the connector handles the access token for you. Then run
 `/lq:start` (bare `/lq` works too — it's a kept alias) to get oriented.
 
-Guests (no sign-in) read the corpus via a shared bearer token, without personalisation. To upgrade a guest
-session, `/lq:start --signout` (or unset `LQ_MCP_TOKEN`) first, then use the connector's **Authenticate**.
+**Staying signed in:** you stay signed in — Claude Code keeps the session alive in the background.
+You'll only sign in again after a long idle stretch or if you switch accounts (`/lq:start --signin`).
+`/lq:start --signout` signs you out.
 
-### Legacy fallback (device-code)
-
-For environments where the native Authenticate prompt isn't available:
-
-```
-/lq:start --signin
-```
-
-Shows a one-time code + **legalquants.com/device**; open it, enter the code, sign in with the Google
-account on your **published** LegalQuants profile. A 7-day session is cached at `~/.config/lq/token.json`.
-**Restart your session**, then run `/lq:start` (bare `/lq` works too — it's a kept alias).
-`/lq:start --signout` clears your cached session.
+> _Upgrading? You'll be asked to **Authenticate** once on first use, then it stays silent. (Remove this note after the v0.7.x cycle.)_
 
 ## Included
 
@@ -50,22 +40,14 @@ account on your **published** LegalQuants profile. A 7-day session is cached at 
 
 ## Auth (how it works)
 
-**Primary (native OAuth):** the connector's **Authenticate** runs `Google login → published profile →
-access token`. The connector supplies that access token automatically on each request and handles refresh;
-there's no cookie or token for you to manage. The lq-mcp server verifies the token **keylessly** (Google
-public certs, no service-account key) and requires the `lqMember` claim that sign-in sets only after the
-published-profile check. `/api/whoami` returns only *your* own builder ID + first-name greeting — never
-another member's identity.
-
-**Legacy fallback (device-code):** `/lq:start --signin` mints a **7-day Firebase session cookie** cached at
-`~/.config/lq/token.json`, which the connector reads on each connection and verifies the same keyless way.
+Native OAuth: the connector's **Authenticate** signs you in with the Google account on your **published**
+LegalQuants profile, and you stay signed in. The server returns only *your* own identity (via `whoami`) —
+never another member's.
 
 ## Troubleshooting
 
 - Commands missing → restart the session (slash commands load at start).
-- Sign-in rejected → publish your legalquants.com profile, then run the connector's **Authenticate** again
-  (or `/lq:start --signin` if you're on the legacy fallback).
-- MCP 401 → run the connector's **Authenticate** again. (On the legacy device-code fallback, restart the
-  session to load the cached cookie, or re-sign-in if the 7-day session expired.)
+- Sign-in rejected → publish your legalquants.com profile, then run the connector's **Authenticate** again.
+- MCP 401 → run the connector's **Authenticate** again, then start a fresh session.
 
 *Questions: j.tso@legalquants.com*

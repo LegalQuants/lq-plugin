@@ -39,8 +39,8 @@ submit it as ONE pending **proposal**, and point them to the website to review a
    submit tool `submit_profile_proposal`). If you see a native **Authenticate** action but no tools yet, the
    connector IS wired — the member just hasn't signed in. Tell them to run **Authenticate (native
    OAuth sign-in)**, then re-run `/lq:update`. Treat it as absent only when no LegalQuants tool exists.
-2. **Authenticated?** Run `whoami`. On an auth error (401 / OAuth prompt), prefer the connector's
-   Authenticate; else `/lq:start --signin`.
+2. **Authenticated?** Run `whoami`. On an auth error (401 / OAuth prompt), run the connector's
+   Authenticate (native OAuth); if not signed in, run `/lq:start` first.
 3. Only if `whoami` returns real data → proceed.
 
 ### Not connected — fail fast, route to /lq:start
