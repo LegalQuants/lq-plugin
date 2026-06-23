@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "lq",
-      "description": "LegalQuants community access in Claude Code — one connector over the community's chat archive + curated knowledge vault, with /lq:start (personalized orientation), /lq:ask (cross-source answers), /lq:assess, and /lq:update (draft your Living Profile from your own community footprint). Members sign in with their LegalQuants account. v0.7.0.",
+      "description": "LegalQuants community access in Claude Code — one connector over the community's chat archive + curated knowledge vault, with /lq:start (personalized orientation), /lq:ask (cross-source answers), /lq:assess, and /lq:update (draft your Living Profile from your own community footprint). Members sign in with their LegalQuants account. v0.7.1.",
       "category": "knowledge",
       "source": "./lq",
       "homepage": "https://github.com/LegalQuants/lq-plugin"

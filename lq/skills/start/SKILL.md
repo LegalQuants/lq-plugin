@@ -112,11 +112,11 @@ Based on the mode detected in cold-start check:
 
 Run these tool calls **in parallel** (single response with multiple tool calls):
 
-1. **Activity per channel** — `grep(author: "builder-NNN", source: "chat", limit: 400)` substituting the actual pseudo-ID (omit `query` — the `author` filter alone returns every post by that member, matched on the parsed author field). Count hits per channel from the results; sort desc. NEVER grep the author *prefix* `\\] builder-NNN: ` — the tool searches message bodies, not the author field, so a prefix search always returns 0.
-2. **Member profile** — `read("members/builder-NNN.md")` — get the role descriptor, joined date, bio.
-3. **Top topics** — sample the member's messages (use the grep output from #1, take a representative slice of ~30 messages). For each, extract content keywords. Cluster manually into top 3-5 topics.
-4. **Shipped projects** — already in member file (`## Ships` section). Extract project names + one-line descriptions.
-5. **Vault people/projects** — read the vault's curated profile for this member (`read("people/<member-slug>.md", source: "brain")`) + `grep("builder-NNN", source: "brain")` for cross-referenced projects.
+1. **Live published profile (authoritative)** — call **`get_my_profile`** → `{ ok, profileKey, profile }`. On `ok`, `profile` is the member's masked live `Lawyer` record (what's actually on `legalquants.com/lawyers/{slug}`): the scalars `bio`, `tagline`, `title`, `location`, `linkedin`, `substack`, `github`, `appsUrl`, plus the **current** `projects`, `media`, and `philosophy` arrays. This is the source of truth for the member's self-described identity and shipped work — prefer it over the corpus snapshot. On `ok:false`: `profile_not_published` / `not_authenticated` → fall back to the member file (`read("members/builder-NNN.md")`) for role/bio/ships and note the profile isn't published; if `profile` is absent, degrade to the member file too.
+2. **Activity per channel** — `grep(author: "builder-NNN", source: "chat", limit: 400)` substituting the actual pseudo-ID (omit `query` — the `author` filter alone returns every post by that member, matched on the parsed author field). Count hits per channel from the results; sort desc. NEVER grep the author *prefix* `\\] builder-NNN: ` — the tool searches message bodies, not the author field, so a prefix search always returns 0. (`get_my_profile` carries no channel activity — this is still the only source for per-channel counts and "last seen".)
+3. **Top topics** — sample the member's messages (use the grep output from #2, take a representative slice of ~30 messages). For each, extract content keywords. Cluster manually into top 3-5 topics.
+4. **Shipped projects** — take from the live profile's `projects` array (name + one-line description). Only fall back to the member file's `## Ships` section if `get_my_profile` returned `ok:false`.
+5. **Vault cross-references (enrichment, secondary)** — `grep("builder-NNN", source: "brain")` for projects others reference. The vault's curated people page (`read("people/<member-slug>.md", source: "brain")`) is now optional enrichment only — the live profile from #1 is the primary identity source, not this.
 
 **Infer the focus orientation** (recency vs synthesis): scan the member's last ~20 messages. Are they majority-questions ("anyone tried...?", "what does X mean?") or majority-statements ("I built", "here's what I think")? Questions → recency-focused. Statements → synthesis-focused. Mixed → both.
 
@@ -124,6 +124,10 @@ Run these tool calls **in parallel** (single response with multiple tool calls):
 
 ```
 Welcome back, <display_greeting> (<builder>)!
+
+👤 **Your profile** — <title><, location> · <tagline>
+   <one-line from bio>
+   (from your live legalquants.com profile — omit this block if get_my_profile returned ok:false)
 
 📊 **Activity** — <total> messages across <N> channels · joined <month year>
    • Most active: <ch1> (<n1>), <ch2> (<n2>), <ch3> (<n3>)
@@ -150,6 +154,8 @@ Write everything to the profile file (Step 5). NO interview questions in this mo
 ---
 
 #### Mode B: Known quiet (brief 2-question interview to supplement thin signal)
+
+First call **`get_my_profile`** (the member is authenticated, just corpus-quiet) — if `ok`, you have their live `legalquants.com` profile (`title`, `tagline`, `bio`, `projects`, `media`, `philosophy`) even though the chat signal is thin. Surface it in the "what we DO know" block and skip any interview question the profile already answers.
 
 Show what we DO know first:
 
