@@ -1,7 +1,7 @@
 {
   "name": "lq",
-  "version": "0.7.1",
-  "description": "LegalQuants community access in Claude Code — search and synthesize the community's collective knowledge (chat archive + curated knowledge vault) through one connector, with /lq:start for a personalized orientation, /lq:ask for cross-source answers, /lq:assess to take on the community's open questions, and /lq:update to draft your Living Profile from your own community footprint. Members sign in with their LegalQuants account.",
+  "version": "0.8.0",
+  "description": "LegalQuants community access in Claude Code — search and synthesize the community's collective knowledge (chat archive + curated knowledge vault) through one connector, with /lq:start for a personalized orientation, /lq:ask for cross-source answers, /lq:assess to take on the community's open questions, /lq:update to draft your Living Profile from your own community footprint, and /lq:share to share a field-learning with the community. Members sign in with their LegalQuants account.",
   "author": {
     "name": "LegalQuants",
     "url": "https://www.legalquants.com"
