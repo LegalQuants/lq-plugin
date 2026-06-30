@@ -2,7 +2,7 @@
   "mcpServers": {
     "lq-mcp": {
       "type": "http",
-      "url": "https://lq-mcp.vercel.app/api/mcp/mcp"
+      "url": "https://mcp.legalquants.com/api/mcp/mcp"
     }
   }
 }

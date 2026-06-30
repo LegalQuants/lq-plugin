@@ -33,7 +33,7 @@ else
   echo "  PASS  .mcp.json injects no auth headers (pure native OAuth)"
 fi
 # Positive shape: it really is the http lq-mcp connector.
-if grep -q '"type": "http"' "$MCP_JSON" && grep -q 'lq-mcp.vercel.app/api/mcp/mcp' "$MCP_JSON"; then
+if grep -q '"type": "http"' "$MCP_JSON" && grep -q 'mcp.legalquants.com/api/mcp/mcp' "$MCP_JSON"; then
   echo "  PASS  .mcp.json registers the http lq-mcp connector"
 else
   echo "  FAIL  .mcp.json missing the expected http lq-mcp registration"; fail=1

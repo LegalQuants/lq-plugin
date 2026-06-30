@@ -37,7 +37,7 @@ LegalQuants community access for Claude Code. Ships one unified read-only MCP se
 - **`/lq:update`** — profile updater for the member's **classic** `Lawyer` profile (rendered at `legalquants.com/lawyers/{slug}`). Reads what the member tells Claude — a new project, a media mention, a sharper bio/philosophy — optionally enriched by their own community footprint (`whoami` → `members/builder-NNN.md` → author-grep of their chat), diffs against the member's **LIVE** profile via the read-only **`get_my_profile`** tool (so it never re-adds press/projects already published), drafts structured **`FieldChange`s** (`path`/`op`/`before`/`after` + required evidence) that fit the website schema, shows the member the exact set, then submits **ONE pending proposal** via the `submit_profile_proposal` MCP tool. The website stores it as a PENDING proposal the member reviews and publishes at **`/profile/updates`**; only the member's in-browser approval makes a change live. **Propose-only**: the token can at most create a pending proposal — it never writes the live profile directly and never touches the corpus. Flag: `--member <builder-NNN>` (operator, draft-only — no submit).
 - **`/lq:share`** — share a field-learning with the community. Composes a short first-person field note (title + finding + optional tag) from the current session, shows the member the EXACT message that will post to the members-only **#lq-share** WhatsApp channel, waits for ONE explicit confirmation, then queues it via the `submit_learning` MCP tool. LQClaw relays it verbatim within minutes — there are no take-backs, so the confirm before send is the only gate. Members only (the server rejects guest submits).
 - **Auto-loaded guidance skill** (`lq-mcp`) — primes the model on each corpus's idioms and on how results span both sources (labelled by source; you don't pick a corpus up front).
-- **MCP server** — `lq-mcp` (`https://lq-mcp.vercel.app/api/mcp/mcp`) auto-registers via `.mcp.json`; the member's native-OAuth token covers it. The tools take `source: chat | brain | all` (default all), so a plain query spans both corpora and results are labelled by source.
+- **MCP server** — `lq-mcp` (`https://mcp.legalquants.com/api/mcp/mcp`) auto-registers via `.mcp.json`; the member's native-OAuth token covers it. The tools take `source: chat | brain | all` (default all), so a plain query spans both corpora and results are labelled by source.
 
 ## User profile (v0.2)
 
@@ -66,7 +66,7 @@ Earlier versions declared a `headersHelper` to inject the legacy device-code coo
 The lq-mcp **server** still accepts the shared guest bearer (`isGuestToken`). For an anonymous/ops read-only session, configure the connector manually OUTSIDE the plugin, e.g.:
 
 ```bash
-claude mcp add --transport http lq-mcp-guest https://lq-mcp.vercel.app/api/mcp/mcp \
+claude mcp add --transport http lq-mcp-guest https://mcp.legalquants.com/api/mcp/mcp \
   --header "Authorization: Bearer $LQ_MCP_TOKEN"
 ```
 

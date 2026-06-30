@@ -12,10 +12,10 @@
 # unauthenticated discovery surface only.)
 
 set -u
-MCP="https://lq-mcp.vercel.app/api/mcp/mcp"
-PRM="https://lq-mcp.vercel.app/.well-known/oauth-protected-resource/api/mcp/mcp"
+MCP="https://mcp.legalquants.com/api/mcp/mcp"
+PRM="https://mcp.legalquants.com/.well-known/oauth-protected-resource/api/mcp/mcp"
 AS="https://www.legalquants.com/.well-known/oauth-authorization-server"
-JWKS="https://lq-mcp.vercel.app/.well-known/jwks.json"
+JWKS="https://mcp.legalquants.com/.well-known/jwks.json"
 fail=0
 ok(){ echo "  PASS  $1"; }
 no(){ echo "  FAIL  $1"; fail=1; }
