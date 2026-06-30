@@ -15,14 +15,18 @@ truth lives server-side.
 ## On every `/lq:assess <subcommand>`
 
 1. **Ensure the skill is installed.** If `~/.claude/skills/lq-assess/SKILL.md` does not
-   exist, install it first:
+   exist, install it from the candidate's tokenized invite link. When the user ran
+   `/lq:assess start <token>`, install with that token:
 
    ```
-   curl -fsSL https://lq-assess.vercel.app/install | sh
+   curl -fsSL "https://assess.legalquants.com/install?token=<token>" | sh
    ```
 
-   If the install fails (no network, or a missing dependency such as `jq` / `node`),
-   surface the error verbatim and stop — do not improvise the flow.
+   The download is gated, so a valid token is required. If no token is available yet —
+   e.g. a bare `/lq:assess` or `/lq:assess help` before installing — tell them to run
+   `/lq:assess start <token>` with the token from their invitation email. If the install
+   fails (no network, or a missing dependency such as `jq` / `node`), surface the error
+   verbatim and stop — do not improvise the flow.
 
 2. **Delegate to the installed skill.** Read `~/.claude/skills/lq-assess/SKILL.md` and
    follow its instructions exactly for the requested subcommand, treating
