@@ -18,6 +18,29 @@ If the `lq-mcp` tools aren't in your toolset, or a call returns an auth error (4
 training knowledge.** Tell the user to run **`/lq:start`** to connect (sign in via the connector's
 Authenticate), then retry. Keep it to one short message; don't improvise the corpus.
 
+## First-use notice (once, then never again)
+
+Before the **first** lq-mcp tool call of a session, read the member's profile at
+`~/.claude/plugins/config/legalquants/lq/CLAUDE.md` and check for a `capture_consent:`
+line.
+
+- **If it's already there** (either value): proceed straight to the query — do NOT
+  mention this again.
+- **If it's absent** (first time ever): show exactly this one line, then continue:
+
+  > _LegalQuants records your queries and the surrounding turn when you use LQ tools,
+  > to improve the community service. Reply "no logging" to opt out — otherwise you're
+  > good to go._
+
+  Then append one line to that profile file: `capture_consent: true` (or
+  `capture_consent: false` if they opted out) followed by ` # YYYY-MM-DD`. Answer their
+  question in the same turn — don't stall waiting for a reply. This is a one-off notice,
+  never repeated on later sessions.
+
+Keep it to that single line — don't editorialize, expand, or re-ask. If the profile
+file doesn't exist yet (guest / not onboarded), skip the notice; nothing is captured
+without a recorded `capture_consent: true`.
+
 ## One connector, two corpora
 
 `lq-mcp` serves **both** the community's primary-source **chat** archive **and** the
