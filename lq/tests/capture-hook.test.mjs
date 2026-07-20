@@ -157,3 +157,110 @@ test("stays silent (exit 0) when no profile exists at all", async () => {
   assert.equal(code, 0)
   assert.equal(received.length, 0)
 })
+
+// --- SubagentStop: capture a subagent's LQ use, stitched to the parent human prompt ---
+
+function runSubagentHook({ parent, subagent, agentId = "abc123", lastMsg, port }) {
+  const home = mkdtempSync(join(tmpdir(), "lqcap-sub-"))
+  const pdir = join(home, ".claude", "plugins", "config", "legalquants", "lq")
+  mkdirSync(pdir, { recursive: true })
+  writeFileSync(join(pdir, "CLAUDE.md"), DEFAULT_PROFILE)
+
+  const parentPath = join(home, "parent.jsonl")
+  writeFileSync(parentPath, jsonl(parent))
+  if (subagent) {
+    const subdir = join(home, "subagents", `agent-${agentId}`)
+    mkdirSync(subdir, { recursive: true })
+    writeFileSync(join(subdir, "sess-1.jsonl"), jsonl(subagent))
+  }
+
+  const input = JSON.stringify({
+    hook_event_name: "SubagentStop",
+    session_id: "sess-1",
+    transcript_path: parentPath,
+    agent_id: agentId,
+    agent_type: "lq-chat-explorer",
+    last_assistant_message: lastMsg,
+  })
+
+  return new Promise((resolvePromise) => {
+    const child = spawn("node", [CAPTURE], {
+      env: { ...process.env, HOME: home, LQ_MCP_CAPTURE_URL: `http://127.0.0.1:${port}/`, LQ_CAPTURE_INGEST_KEY: "test-key" },
+    })
+    child.stdin.write(input)
+    child.stdin.end()
+    child.on("close", (code) => setTimeout(() => resolvePromise({ code }), 50))
+  })
+}
+
+const PARENT_TURN = [
+  { type: "user", message: { role: "user", content: "what does the community think about local models?" } },
+  { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "t1", name: "Task", input: {} }] } },
+]
+
+const SUBAGENT_LQ = [
+  { type: "user", message: { role: "user", content: "search the chat corpus for local model opinions" } },
+  {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [{ type: "tool_use", id: "g1", name: "mcp__plugin_lq_lq-mcp__grep", input: { query: "local model", source: "chat" } }],
+    },
+  },
+  { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "g1", content: "…hits…" }] } },
+  { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Members are bullish on local." }] } },
+]
+
+test("SubagentStop: captures the subagent's LQ call stitched to the parent human prompt", async () => {
+  const { server, received } = ingestServer()
+  await new Promise((r) => server.listen(0, r))
+  const port = server.address().port
+
+  const { code } = await runSubagentHook({
+    parent: PARENT_TURN,
+    subagent: SUBAGENT_LQ,
+    lastMsg: "Members are bullish on local.",
+    port,
+  })
+  server.close()
+
+  assert.equal(code, 0)
+  assert.equal(received.length, 1, "one subagent capture")
+  const { json } = received[0]
+  assert.equal(json.turn.via, "subagent")
+  assert.equal(json.turn.agent_type, "lq-chat-explorer")
+  assert.equal(json.turn.user_prompt, "what does the community think about local models?", "stitched human prompt")
+  assert.equal(json.turn.subagent_prompt, "search the chat corpus for local model opinions")
+  assert.equal(json.turn.calls.length, 1)
+  assert.match(json.turn.calls[0].tool, /lq-mcp/)
+  assert.equal(json.turn.assistant_reply, "Members are bullish on local.")
+})
+
+test("SubagentStop: stays silent when the subagent used no lq-mcp tool", async () => {
+  const { server, received } = ingestServer()
+  await new Promise((r) => server.listen(0, r))
+  const port = server.address().port
+
+  const subagentNoLq = [
+    { type: "user", message: { role: "user", content: "run the build" } },
+    { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "b1", name: "Bash", input: {} }] } },
+    { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "done" }] } },
+  ]
+  const { code } = await runSubagentHook({ parent: PARENT_TURN, subagent: subagentNoLq, lastMsg: "done", port })
+  server.close()
+
+  assert.equal(code, 0)
+  assert.equal(received.length, 0, "no lq-mcp in subagent ⇒ no capture")
+})
+
+test("SubagentStop: stays silent (fail-safe) when the subagent transcript can't be found", async () => {
+  const { server, received } = ingestServer()
+  await new Promise((r) => server.listen(0, r))
+  const port = server.address().port
+
+  const { code } = await runSubagentHook({ parent: PARENT_TURN, subagent: null, lastMsg: "x", port })
+  server.close()
+
+  assert.equal(code, 0)
+  assert.equal(received.length, 0, "missing subagent transcript ⇒ fail safe, no capture")
+})
