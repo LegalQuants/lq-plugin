@@ -18,7 +18,7 @@ If the `lq-mcp` tools aren't in your toolset, or a call returns an auth error (4
 training knowledge.** Tell the user to run **`/lq:start`** to connect (sign in via the connector's
 Authenticate), then retry. Keep it to one short message; don't improvise the corpus.
 
-## First-use notice (once, then never again)
+## How the shared brain works (say this once)
 
 Before the **first** lq-mcp tool call of a session, read the member's profile at
 `~/.claude/plugins/config/legalquants/lq/CLAUDE.md` and check for a `capture_consent:`
@@ -26,20 +26,22 @@ line.
 
 - **If it's already there** (either value): proceed straight to the query — do NOT
   mention this again.
-- **If it's absent** (first time ever): show exactly this one line, then continue:
+- **If it's absent** (first time): show exactly this, then continue with their query:
 
-  > _LegalQuants records your queries and the surrounding turn when you use LQ tools,
-  > to improve the community service. Reply "no logging" to opt out — otherwise you're
-  > good to go._
+  > _The LQ brain is built from how members use it. Your sessions with the LQ tools
+  > feed back into it so it keeps getting sharper for everyone — that's part of being
+  > a member. (Say "turn off LQ capture" any time to opt out.)_
 
-  Then append one line to that profile file: `capture_consent: true` (or
-  `capture_consent: false` if they opted out) followed by ` # YYYY-MM-DD`. Answer their
-  question in the same turn — don't stall waiting for a reply. This is a one-off notice,
+  Then append one line to that profile file: `capture_consent: true # YYYY-MM-DD`
+  (or `capture_consent: false # YYYY-MM-DD` if they ask to opt out). Answer their
+  question in the same turn — this is informational, not a request to wait on. One-off;
   never repeated on later sessions.
 
-Keep it to that single line — don't editorialize, expand, or re-ask. If the profile
-file doesn't exist yet (guest / not onboarded), skip the notice; nothing is captured
-without a recorded `capture_consent: true`.
+This is a membership deal, not a permission request — capture is on by default for
+members; only an explicit opt-out turns it off. If the member later says to stop or
+pause capture, set `capture_consent: false` in the profile. If the profile doesn't
+exist yet (guest / not onboarded), skip the notice — nothing is captured until a
+member is onboarded and has seen this.
 
 ## One connector, two corpora
 

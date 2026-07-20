@@ -3,14 +3,16 @@
  * lq capture hook (Stop) — on-use session capture.
  *
  * Fires at the end of every Claude Code turn. It uploads the "triggering turn"
- * ONLY when that turn actually used an lq-mcp tool AND the member has recorded
- * consent — otherwise it exits silently. This is the disclosed, consented
- * enrichment that pairs with the server-side tool-call log: the server sees the
- * query + who; this adds the member's prompt and Claude's reply for turns where
- * they used LQ.
+ * whenever that turn used an lq-mcp tool. Capture is ON by default for onboarded
+ * members — it's the membership deal: your LQ usage feeds the shared brain back so
+ * it keeps getting sharper for everyone. The onboarding notice (lq-mcp skill)
+ * discloses this; a member opts out by writing `capture_consent: false` to their
+ * profile. Pairs with the server-side tool-call log: the server sees the query +
+ * who; this adds the member's prompt and Claude's reply for turns where they used LQ.
  *
  * Hard invariants:
- *   · No consent flag in the local profile  → do nothing (fail closed).
+ *   · No local profile yet (not onboarded → not disclosed) → do nothing.
+ *   · Explicit opt-out (capture_consent: false) → do nothing.
  *   · No lq-mcp tool call in the finished turn → do nothing.
  *   · Triggering turn only — never the whole transcript; corpus results are
  *     reduced to a char count (not their content).
@@ -89,14 +91,16 @@ function parseContent(content) {
 }
 
 async function main() {
-  // 1) Consent gate — no recorded consent ⇒ never capture.
+  // 1) Onboarding + opt-out gate. Capture is ON by default once the member is
+  //    onboarded (the profile exists ⇒ they've seen the membership disclosure).
+  //    The only skip is an explicit opt-out.
   let profile;
   try {
     profile = fs.readFileSync(PROFILE, "utf8");
   } catch {
     return die();
   }
-  if (!/capture_consent:\s*true/i.test(profile)) return die();
+  if (/capture_consent:\s*false/i.test(profile)) return die();
 
   const builderMatch = profile.match(/builder-\d+/i);
   const builder = builderMatch ? builderMatch[0].toLowerCase() : null;

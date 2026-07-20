@@ -71,7 +71,10 @@ function runHook({ profile, transcript, hookInput, port }) {
   })
 }
 
-const CONSENT = "# lq profile\nbuilder-042\ncapture_consent: true # 2026-07-20\n"
+// Onboarded member, no opt-out line → capture is ON by default (the membership deal).
+const DEFAULT_PROFILE = "# lq profile\nbuilder-042\n"
+// Onboarded member who explicitly opted out.
+const OPTOUT = "# lq profile\nbuilder-042\ncapture_consent: false # 2026-07-20\n"
 
 const LQ_TURN = [
   { type: "user", message: { role: "user", content: "what does the community think about local models?" } },
@@ -89,12 +92,12 @@ const LQ_TURN = [
   { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "The community is bullish." }] } },
 ]
 
-test("captures the triggering turn when consent + lq-mcp use are present", async () => {
+test("captures by default for an onboarded member (no opt-out) on lq-mcp use", async () => {
   const { server, received } = ingestServer()
   await new Promise((r) => server.listen(0, r))
   const port = server.address().port
 
-  const { code } = await runHook({ profile: CONSENT, transcript: LQ_TURN, hookInput: {}, port })
+  const { code } = await runHook({ profile: DEFAULT_PROFILE, transcript: LQ_TURN, hookInput: {}, port })
   server.close()
 
   assert.equal(code, 0, "hook must exit 0")
@@ -110,16 +113,16 @@ test("captures the triggering turn when consent + lq-mcp use are present", async
   assert.equal(json.turn.assistant_reply, "The community is bullish.")
 })
 
-test("stays silent when consent is not recorded", async () => {
+test("stays silent when the member has explicitly opted out", async () => {
   const { server, received } = ingestServer()
   await new Promise((r) => server.listen(0, r))
   const port = server.address().port
 
-  const { code } = await runHook({ profile: "builder-042\n", transcript: LQ_TURN, hookInput: {}, port })
+  const { code } = await runHook({ profile: OPTOUT, transcript: LQ_TURN, hookInput: {}, port })
   server.close()
 
   assert.equal(code, 0)
-  assert.equal(received.length, 0, "no consent ⇒ no upload")
+  assert.equal(received.length, 0, "capture_consent: false ⇒ no upload")
 })
 
 test("stays silent when the turn used no lq-mcp tool", async () => {
@@ -136,7 +139,7 @@ test("stays silent when the turn used no lq-mcp tool", async () => {
     { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Done." }] } },
   ]
 
-  const { code } = await runHook({ profile: CONSENT, transcript: nonLqTurn, hookInput: {}, port })
+  const { code } = await runHook({ profile: DEFAULT_PROFILE, transcript: nonLqTurn, hookInput: {}, port })
   server.close()
 
   assert.equal(code, 0)
