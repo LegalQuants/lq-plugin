@@ -21,18 +21,12 @@ In Claude Code:
 
 ## Sign in (members)
 
-```
-/lq --signin
-```
+Sign-in is **native OAuth** through the `lq-mcp` connector — no code to type, no token to paste.
 
-This starts a Google sign-in via a one-time device code:
-
-1. The plugin shows a short code (e.g. `ABCD-EFGH`) and the link **https://www.legalquants.com/device**.
-2. Open the link, enter the code, and sign in with the **Google account on your LegalQuants profile**.
-3. The plugin caches a 7-day session locally (`~/.config/lq/token.json`, mode 0600) — no password or
-   token to copy by hand.
-
-**Restart your Claude Code session** so it picks up the sign-in, then:
+1. Run `/mcp`, select **lq-mcp**, and choose **Authenticate**.
+2. Your browser opens the LegalQuants sign-in. Use whichever account your **published** profile
+   uses — **Google, GitHub, or email link** — then click **Authorize**.
+3. Back in Claude Code, run:
 
 ```
 /lq:start
@@ -41,7 +35,8 @@ This starts a Google sign-in via a one-time device code:
 If your profile is published and linked, you'll get an "I know you" greeting derived from your chat
 activity. Then just ask anything about the community.
 
-`/lq --signout` clears your session.
+You stay signed in — Claude Code refreshes the session silently in the background. `/lq:start --signin`
+re-triggers sign-in (e.g. to switch accounts); `/lq:start --signout` signs you out.
 
 ---
 
@@ -69,24 +64,23 @@ activity. Then just ask anything about the community.
 
 ## How sign-in works (under the hood)
 
-`Google login → your LegalQuants profile → a private builder ID → a 7-day Firebase session cookie`.
-The cookie carries your identity as Firebase custom claims; the lq-mcp server verifies it **keylessly** (against
-Google's public certs — no service-account key) and returns only your own builder ID + first-name
-greeting. Your builder ID is never shown to other members.
-
-Guests (no member sign-in) can still read the corpus via a shared bearer token, without
-personalisation.
+`LegalQuants sign-in (Google / GitHub / email) → your published profile → a private builder ID → a
+short-lived access token + rotating refresh token`. Claude Code stores the tokens securely (system
+keychain) and refreshes them silently; the lq-mcp server verifies the access token **keylessly**
+(against the site's public keys — no service-account key) and returns only your own builder ID +
+first-name greeting. Your builder ID is never shown to other members.
 
 ## Troubleshooting
 
 - **Commands don't appear after install** — restart your Claude Code session (slash commands load at start).
-- **Sign-in rejected** — your LegalQuants profile must be **published**. Publish it at legalquants.com, then `/lq --signin` again.
-- **MCP 401 after sign-in** — restart the session so the cached cookie loads; or re-run `/lq --signin` if your 7-day session expired.
+- **Sign-in rejected** — your LegalQuants profile must be **published**. Publish it at legalquants.com, then run the connector's **Authenticate** again (`/mcp` → lq-mcp).
+- **MCP 401** — run the connector's **Authenticate** again (`/mcp` → lq-mcp), then start a fresh session.
+- **Your terminal shows a short code to type at legalquants.com/device** — you're on an old plugin version. Run `/plugin update lq@legalquants`, restart the session, then Authenticate as above.
 
 ## Privacy
 
 The corpus is **sanitized** — authors appear as stable `builder-NNN` pseudo-IDs, never real names.
-Your cached session cookie is your credential on your machine; the server never reads your local files.
+Your sign-in tokens are your credential on your machine (system keychain); the server never reads your local files.
 
 ---
 

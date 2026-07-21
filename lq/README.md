@@ -1,4 +1,4 @@
-# lq — LegalQuants Claude Code plugin (v0.7.0)
+# lq — LegalQuants Claude Code plugin
 
 One-install access to the LegalQuants community chat archive via MCP, with an "I know you"
 cold-start and member sign-in.
@@ -15,15 +15,13 @@ cold-start and member sign-in.
 ## Member sign-in (native OAuth — no code, no token)
 
 Use the connector's **Authenticate (native OAuth sign-in)** prompt. There's nothing to copy and no token
-to paste: the connector opens LegalQuants sign-in in your browser, you sign in with the Google account on
-your **published** LegalQuants profile, and the connector handles the access token for you. Then run
-`/lq:start` (bare `/lq` works too — it's a kept alias) to get oriented.
+to paste: the connector opens LegalQuants sign-in in your browser, you sign in with the account on your
+**published** LegalQuants profile — **Google, GitHub, or email link** all work — and the connector handles
+the access token for you. Then run `/lq:start` (bare `/lq` works too — it's a kept alias) to get oriented.
 
 **Staying signed in:** you stay signed in — Claude Code keeps the session alive in the background.
 You'll only sign in again after a long idle stretch or if you switch accounts (`/lq:start --signin`).
 `/lq:start --signout` signs you out.
-
-> _Upgrading? You'll be asked to **Authenticate** once on first use, then it stays silent. (Remove this note after the v0.7.x cycle.)_
 
 ## Included
 
@@ -40,9 +38,9 @@ You'll only sign in again after a long idle stretch or if you switch accounts (`
 
 ## Auth (how it works)
 
-Native OAuth: the connector's **Authenticate** signs you in with the Google account on your **published**
-LegalQuants profile, and you stay signed in. The server returns only *your* own identity (via `whoami`) —
-never another member's.
+Native OAuth: the connector's **Authenticate** signs you in with the account on your **published**
+LegalQuants profile (Google, GitHub, or email link), and you stay signed in. The server returns only
+*your* own identity (via `whoami`) — never another member's.
 
 ## Troubleshooting
 
